@@ -1,0 +1,20 @@
+{
+  "name": "@funex/viator-connector",
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "sync": "tsx src/run-sync.ts"
+  },
+  "dependencies": {
+    "@funex/graph": "workspace:*",
+    "@funex/telemetry": "workspace:*",
+    "drizzle-orm": "^0.45.2"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}

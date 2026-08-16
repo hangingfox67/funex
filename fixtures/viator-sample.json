@@ -1,0 +1,452 @@
+[
+  {
+    "productCode": "23456P12",
+    "title": "Phi Phi Islands Speedboat Tour from Phuket",
+    "category": "boat_tour",
+    "description": "Visit Maya Bay, Pileh Lagoon, and Monkey Beach on a full-day speedboat tour with lunch, snorkeling gear, and hotel transfers included.",
+    "durationMinutes": 480,
+    "priceCents": 250000,
+    "meetingPoints": [{ "lat": 7.842, "lng": 98.397, "label": "Rassada Pier" }]
+  },
+  {
+    "productCode": "31287P5",
+    "title": "James Bond Island & Phang Nga Bay by Longtail Boat",
+    "category": "boat_tour",
+    "description": "Cruise through Phang Nga Bay's dramatic limestone karsts, visit James Bond Island, and canoe through sea caves with a local guide.",
+    "durationMinutes": 540,
+    "priceCents": 280000,
+    "meetingPoints": [{ "lat": 7.842, "lng": 98.397, "label": "Rassada Pier" }]
+  },
+  {
+    "productCode": "44891P3",
+    "title": "Similan Islands Full-Day Snorkeling Trip",
+    "category": "boat_tour",
+    "description": "Travel to the crystal-clear waters of the Similan Islands for a full day of snorkeling across three world-class sites with lunch on the beach.",
+    "durationMinutes": 720,
+    "priceCents": 350000,
+    "meetingPoints": [{ "lat": 7.842, "lng": 98.397, "label": "Rassada Pier" }]
+  },
+  {
+    "productCode": "55023P8",
+    "title": "Phuket Sunset Cruise with Dinner & Live Music",
+    "category": "boat_tour",
+    "description": "Sail along Phuket's west coast as the sun sets, enjoying a Thai-Western buffet dinner and live acoustic music aboard a traditional junk boat.",
+    "durationMinutes": 210,
+    "priceCents": 320000,
+    "meetingPoints": [{ "lat": 7.826, "lng": 98.364, "label": "Chalong Pier" }]
+  },
+  {
+    "productCode": "18764P1",
+    "title": "Khai Islands Speedboat Half-Day Tour",
+    "category": "boat_tour",
+    "description": "Spend a relaxed half day on the three Khai Islands with time for swimming, snorkeling, and sunbathing on powdery white-sand beaches.",
+    "durationMinutes": 300,
+    "priceCents": 150000,
+    "meetingPoints": [{ "lat": 7.842, "lng": 98.397, "label": "Rassada Pier" }]
+  },
+  {
+    "productCode": "67432P16",
+    "title": "Coral Island (Koh He) Day Trip with Parasailing Option",
+    "category": "boat_tour",
+    "description": "Take a short boat ride to Coral Island for a beach day with optional parasailing, banana boat rides, and a beachside Thai lunch.",
+    "durationMinutes": 420,
+    "priceCents": 180000,
+    "meetingPoints": [{ "lat": 7.826, "lng": 98.364, "label": "Chalong Pier" }]
+  },
+  {
+    "productCode": "29184P4",
+    "title": "Phuket 3-Dive Day Trip for Certified Divers",
+    "category": "diving",
+    "description": "Explore three dive sites around Racha Yai and Racha Noi islands with full equipment, divemaster, and lunch aboard a comfortable dive boat.",
+    "durationMinutes": 540,
+    "priceCents": 450000,
+    "meetingPoints": [{ "lat": 7.826, "lng": 98.364, "label": "Chalong Pier" }]
+  },
+  {
+    "productCode": "38291P7",
+    "title": "Discover Scuba Diving Experience for Beginners",
+    "category": "diving",
+    "description": "Try scuba diving for the first time with a certified instructor at a shallow coral reef near Phuket, no experience required.",
+    "durationMinutes": 360,
+    "priceCents": 380000,
+    "meetingPoints": [{ "lat": 7.826, "lng": 98.364, "label": "Chalong Pier" }]
+  },
+  {
+    "productCode": "41567P2",
+    "title": "Half-Day Snorkeling Tour to Racha Island",
+    "category": "snorkeling",
+    "description": "Snorkel among tropical fish and coral reefs at Racha Yai Island with all equipment provided and a light lunch on the boat.",
+    "durationMinutes": 300,
+    "priceCents": 180000,
+    "meetingPoints": [{ "lat": 7.826, "lng": 98.364, "label": "Chalong Pier" }]
+  },
+  {
+    "productCode": "52378P9",
+    "title": "Snorkeling at Maiton & Coral Island by Catamaran",
+    "category": "snorkeling",
+    "description": "Cruise to two pristine snorkeling spots aboard a catamaran with buffet lunch, fruit platters, and an open bar on the return journey.",
+    "durationMinutes": 420,
+    "priceCents": 280000,
+    "meetingPoints": [{ "lat": 7.826, "lng": 98.364, "label": "Chalong Pier" }]
+  },
+  {
+    "productCode": "73456P11",
+    "title": "Morning Thai Cooking Class with Market Tour",
+    "category": "cooking_class",
+    "description": "Shop for ingredients at a local market, then cook five authentic Thai dishes in an open-air kitchen with a professional chef.",
+    "durationMinutes": 300,
+    "priceCents": 180000,
+    "meetingPoints": [{ "lat": 7.883, "lng": 98.392, "label": "Phuket Old Town" }]
+  },
+  {
+    "productCode": "84512P6",
+    "title": "Evening Thai Cooking Experience in Kata",
+    "category": "cooking_class",
+    "description": "Learn to prepare four classic Thai dishes in a garden setting with a sunset cocktail and enjoy your creations for dinner.",
+    "durationMinutes": 240,
+    "priceCents": 200000,
+    "meetingPoints": [{ "lat": 7.817, "lng": 98.298, "label": "Kata Beach Road" }]
+  },
+  {
+    "productCode": "91234P14",
+    "title": "Farm-to-Table Cooking Class in Bang Tao",
+    "category": "cooking_class",
+    "description": "Pick herbs from an organic garden, learn to make curry paste from scratch, and cook a full Thai meal at a boutique farm near Bang Tao.",
+    "durationMinutes": 270,
+    "priceCents": 250000,
+    "meetingPoints": [{ "lat": 7.987, "lng": 98.292, "label": "Bang Tao" }]
+  },
+  {
+    "productCode": "10345P19",
+    "title": "Phuket Family Cooking Class for Kids & Parents",
+    "category": "cooking_class",
+    "description": "A hands-on cooking session designed for families where kids make pad thai and mango sticky rice alongside their parents.",
+    "durationMinutes": 180,
+    "priceCents": 150000,
+    "meetingPoints": [{ "lat": 7.897, "lng": 98.297, "label": "Patong" }]
+  },
+  {
+    "productCode": "62781P3",
+    "title": "Big Buddha, Wat Chalong & Old Town Temple Tour",
+    "category": "temple_tour",
+    "description": "Visit Phuket's three most important temples in one morning with a knowledgeable English-speaking guide and hotel pickup.",
+    "durationMinutes": 270,
+    "priceCents": 120000,
+    "meetingPoints": [{ "lat": 7.826, "lng": 98.364, "label": "Chalong Circle" }]
+  },
+  {
+    "productCode": "75893P20",
+    "title": "Phuket Old Town Walking Tour & Street Art Trail",
+    "category": "cultural",
+    "description": "Stroll through Sino-Portuguese shophouses, discover hidden street art, visit a local shrine, and taste traditional Phuket snacks.",
+    "durationMinutes": 180,
+    "priceCents": 95000,
+    "meetingPoints": [{ "lat": 7.883, "lng": 98.392, "label": "Phuket Old Town Clock Tower" }]
+  },
+  {
+    "productCode": "83412P15",
+    "title": "Wat Chalong & Big Buddha Sunset Visit with Guide",
+    "category": "temple_tour",
+    "description": "Beat the crowds with a late-afternoon temple tour that finishes at Big Buddha for panoramic sunset views over Chalong Bay.",
+    "durationMinutes": 210,
+    "priceCents": 100000,
+    "meetingPoints": [{ "lat": 7.826, "lng": 98.364, "label": "Chalong Circle" }]
+  },
+  {
+    "productCode": "94567P22",
+    "title": "Old Town Heritage & Peranakan Culture Half-Day Tour",
+    "category": "cultural",
+    "description": "Explore Phuket's Peranakan heritage through museum visits, a traditional shophouse tour, and a Hokkien noodle lunch in Old Town.",
+    "durationMinutes": 240,
+    "priceCents": 140000,
+    "meetingPoints": [{ "lat": 7.883, "lng": 98.392, "label": "Thai Hua Museum" }]
+  },
+  {
+    "productCode": "15678P10",
+    "title": "Phuket ATV Adventure through Jungle Trails",
+    "category": "adventure",
+    "description": "Ride an ATV through muddy jungle tracks, rubber plantations, and hilltop viewpoints on this adrenaline-pumping guided excursion.",
+    "durationMinutes": 120,
+    "priceCents": 180000,
+    "meetingPoints": [{ "lat": 7.847, "lng": 98.293, "label": "Karon Hills" }]
+  },
+  {
+    "productCode": "26789P13",
+    "title": "Flying Hanuman Zipline Adventure in Phuket Rainforest",
+    "category": "adventure",
+    "description": "Soar through the jungle canopy on 28 zipline platforms with sky bridges and abseil descents in Phuket's premier treetop adventure park.",
+    "durationMinutes": 180,
+    "priceCents": 300000,
+    "meetingPoints": [{ "lat": 7.847, "lng": 98.293, "label": "Kathu" }]
+  },
+  {
+    "productCode": "37890P17",
+    "title": "Surf Lesson at Kata Beach for Beginners",
+    "category": "adventure",
+    "description": "Learn to surf with a certified instructor at Kata Beach, one of Phuket's best beginner-friendly surf spots, board and rashguard included.",
+    "durationMinutes": 120,
+    "priceCents": 150000,
+    "meetingPoints": [{ "lat": 7.817, "lng": 98.298, "label": "Kata Beach South End" }]
+  },
+  {
+    "productCode": "48901P21",
+    "title": "Muay Thai Training Session with Pro Fighters",
+    "category": "adventure",
+    "description": "Train at an authentic Muay Thai gym with professional fighters, covering basic techniques, pad work, and conditioning in a 90-minute session.",
+    "durationMinutes": 90,
+    "priceCents": 120000,
+    "meetingPoints": [{ "lat": 7.897, "lng": 98.297, "label": "Patong Boxing Stadium Area" }]
+  },
+  {
+    "productCode": "59012P4",
+    "title": "Phuket Elephant Sanctuary Half-Day Visit",
+    "category": "wildlife",
+    "description": "Spend a morning at an ethical elephant sanctuary where you walk with, feed, and bathe retired working elephants in a natural forest setting.",
+    "durationMinutes": 240,
+    "priceCents": 280000,
+    "meetingPoints": [{ "lat": 7.987, "lng": 98.292, "label": "Thalang pickup" }]
+  },
+  {
+    "productCode": "60123P18",
+    "title": "Phuket Elephant Jungle Walk & Waterfall Trip",
+    "category": "wildlife",
+    "description": "Walk alongside elephants on a jungle trail to a hidden waterfall, followed by an organic Thai lunch at the sanctuary camp.",
+    "durationMinutes": 300,
+    "priceCents": 350000,
+    "meetingPoints": [{ "lat": 7.987, "lng": 98.292, "label": "Thalang pickup" }]
+  },
+  {
+    "productCode": "71234P25",
+    "title": "Gibbon Rehabilitation Centre & Rainforest Hike",
+    "category": "wildlife",
+    "description": "Visit a gibbon conservation project in Khao Phra Thaeo National Park and hike through old-growth rainforest with a naturalist guide.",
+    "durationMinutes": 210,
+    "priceCents": 160000,
+    "meetingPoints": [{ "lat": 7.987, "lng": 98.292, "label": "Bang Pae Waterfall Entrance" }]
+  },
+  {
+    "productCode": "82345P2",
+    "title": "Sea Kayaking through Phang Nga Bay Sea Caves",
+    "category": "water_sport",
+    "description": "Paddle through dramatic limestone caves and hidden lagoons in Phang Nga Bay on a guided full-day sea kayaking adventure.",
+    "durationMinutes": 480,
+    "priceCents": 280000,
+    "meetingPoints": [{ "lat": 7.842, "lng": 98.397, "label": "Rassada Pier" }]
+  },
+  {
+    "productCode": "93456P7",
+    "title": "Jet Ski Tour around Phuket's Southern Islands",
+    "category": "water_sport",
+    "description": "Ride a jet ski on a guided island-hopping route past Koh Lon and Coral Island with a break for swimming and photos.",
+    "durationMinutes": 120,
+    "priceCents": 350000,
+    "meetingPoints": [{ "lat": 7.817, "lng": 98.298, "label": "Kata Beach" }]
+  },
+  {
+    "productCode": "14567P24",
+    "title": "Parasailing over Patong Beach",
+    "category": "water_sport",
+    "description": "Fly 150 meters above Patong Beach for panoramic views of the Andaman coast on a safe tandem parasailing flight with boat crew.",
+    "durationMinutes": 60,
+    "priceCents": 120000,
+    "meetingPoints": [{ "lat": 7.897, "lng": 98.297, "label": "Patong Beach South" }]
+  },
+  {
+    "productCode": "25678P11",
+    "title": "Stand-Up Paddleboard Lesson & Mangrove Tour",
+    "category": "water_sport",
+    "description": "Learn to SUP in calm waters, then paddle through a scenic mangrove forest with a guide who shares local ecology knowledge.",
+    "durationMinutes": 150,
+    "priceCents": 140000,
+    "meetingPoints": [{ "lat": 7.987, "lng": 98.292, "label": "Bang Tao Lagoon" }]
+  },
+  {
+    "productCode": "36789P6",
+    "title": "Traditional Thai Massage & Herbal Spa (2 Hours)",
+    "category": "wellness",
+    "description": "Unwind with a two-hour traditional Thai massage followed by an aromatic herbal compress treatment at a peaceful hillside spa.",
+    "durationMinutes": 150,
+    "priceCents": 180000,
+    "meetingPoints": [{ "lat": 7.817, "lng": 98.298, "label": "Kata Wellness Centre" }]
+  },
+  {
+    "productCode": "47890P9",
+    "title": "Luxury Spa & Hot Spring Day Retreat",
+    "category": "wellness",
+    "description": "Spend a full day at a luxury spa with access to natural hot springs, a mineral pool, aromatherapy massage, and a healthy Thai lunch.",
+    "durationMinutes": 360,
+    "priceCents": 450000,
+    "meetingPoints": [{ "lat": 7.987, "lng": 98.292, "label": "Bang Tao Spa Resort" }]
+  },
+  {
+    "productCode": "58901P15",
+    "title": "Beachside Yoga & Meditation Sunrise Session",
+    "category": "wellness",
+    "description": "Start the day with a guided yoga and meditation session on the beach at sunrise, suitable for all levels including complete beginners.",
+    "durationMinutes": 90,
+    "priceCents": 80000,
+    "meetingPoints": [{ "lat": 7.817, "lng": 98.298, "label": "Kata Noi Beach" }]
+  },
+  {
+    "productCode": "69012P23",
+    "title": "Phuket Street Food Tour by Tuk-Tuk",
+    "category": "food_tour",
+    "description": "Hop between eight iconic street food stalls by tuk-tuk, tasting Hokkien noodles, roti, dim sum, and Phuket-style curries with a local guide.",
+    "durationMinutes": 240,
+    "priceCents": 160000,
+    "meetingPoints": [{ "lat": 7.883, "lng": 98.392, "label": "Phuket Old Town" }]
+  },
+  {
+    "productCode": "70123P8",
+    "title": "Patong Night Market & Thai Food Tasting Tour",
+    "category": "food_tour",
+    "description": "Explore Patong's vibrant night market with a guide who introduces you to local Thai dishes, fresh seafood, and tropical desserts.",
+    "durationMinutes": 180,
+    "priceCents": 130000,
+    "meetingPoints": [{ "lat": 7.897, "lng": 98.297, "label": "Patong OTOP Market" }]
+  },
+  {
+    "productCode": "81234P26",
+    "title": "Phuket Weekend Market & Local Eats Walking Tour",
+    "category": "food_tour",
+    "description": "Browse Naka Weekend Market with a foodie guide, sampling over 10 dishes from grilled seafood to coconut ice cream.",
+    "durationMinutes": 180,
+    "priceCents": 110000,
+    "meetingPoints": [{ "lat": 7.883, "lng": 98.392, "label": "Naka Market Entrance" }]
+  },
+  {
+    "productCode": "92345P10",
+    "title": "Phuket Instagram Tour: Viewpoints & Hidden Gems",
+    "category": "sightseeing",
+    "description": "Hit the island's most photogenic spots from Promthep Cape to Windmill Viewpoint in an air-conditioned van with a photographer guide.",
+    "durationMinutes": 360,
+    "priceCents": 180000,
+    "meetingPoints": [{ "lat": 7.897, "lng": 98.297, "label": "Patong Hotel pickup" }]
+  },
+  {
+    "productCode": "13456P27",
+    "title": "Phuket City & Highlights Half-Day Sightseeing Tour",
+    "category": "sightseeing",
+    "description": "Cover Phuket's top sights including Karon Viewpoint, a cashew nut factory, and Old Town in a comfortable half-day group tour.",
+    "durationMinutes": 270,
+    "priceCents": 100000,
+    "meetingPoints": [{ "lat": 7.847, "lng": 98.293, "label": "Karon Viewpoint" }]
+  },
+  {
+    "productCode": "24567P16",
+    "title": "Cape Panwa Aquarium & Panoramic Viewpoint Tour",
+    "category": "sightseeing",
+    "description": "Visit the Phuket Aquarium at Cape Panwa, followed by a scenic drive to Khao Khad Viewpoint for 360-degree island views.",
+    "durationMinutes": 210,
+    "priceCents": 90000,
+    "meetingPoints": [{ "lat": 7.807, "lng": 98.398, "label": "Cape Panwa Pier" }]
+  },
+  {
+    "productCode": "35678P19",
+    "title": "Simon Cabaret Show Phuket (Regular Seat)",
+    "category": "nightlife",
+    "description": "Watch Phuket's famous cabaret show featuring dazzling costumes, choreography, and live performances in a grand theater in Patong.",
+    "durationMinutes": 90,
+    "priceCents": 80000,
+    "meetingPoints": [{ "lat": 7.897, "lng": 98.297, "label": "Simon Cabaret Theatre, Patong" }]
+  },
+  {
+    "productCode": "46789P22",
+    "title": "Bangla Road Night Tour & Muay Thai Fight",
+    "category": "nightlife",
+    "description": "Experience Patong's famous Bangla Road nightlife scene followed by ringside seats at a live Muay Thai boxing match.",
+    "durationMinutes": 210,
+    "priceCents": 170000,
+    "meetingPoints": [{ "lat": 7.897, "lng": 98.297, "label": "Bangla Road Entrance" }]
+  },
+  {
+    "productCode": "57890P14",
+    "title": "Phuket FantaSea Cultural Theme Show & Dinner",
+    "category": "nightlife",
+    "description": "Enjoy a grand theatrical show celebrating Thai mythology and culture, preceded by a lavish buffet dinner at the FantaSea complex.",
+    "durationMinutes": 270,
+    "priceCents": 220000,
+    "meetingPoints": [{ "lat": 7.987, "lng": 98.292, "label": "Kamala FantaSea" }]
+  },
+  {
+    "productCode": "68901P5",
+    "title": "Private Airport Transfer from Phuket Airport",
+    "category": "transport",
+    "description": "Reliable private car transfer from Phuket International Airport to any hotel on the island with meet-and-greet and luggage assistance.",
+    "durationMinutes": 75,
+    "priceCents": 90000,
+    "meetingPoints": [{ "lat": 8.107, "lng": 98.317, "label": "Phuket International Airport" }]
+  },
+  {
+    "productCode": "79012P28",
+    "title": "Phuket Half-Day Private Car Charter with Driver",
+    "category": "transport",
+    "description": "Hire a private car with an English-speaking driver for half a day to explore Phuket at your own pace, itinerary fully flexible.",
+    "durationMinutes": 240,
+    "priceCents": 200000,
+    "meetingPoints": [{ "lat": 7.897, "lng": 98.297, "label": "Any hotel pickup" }]
+  },
+  {
+    "productCode": "80123P1",
+    "title": "Luxury Private Yacht Sunset Cruise with Chef",
+    "category": "boat_tour",
+    "description": "Charter a private yacht along the Andaman coast with a personal chef preparing a five-course dinner as you watch the sunset.",
+    "durationMinutes": 240,
+    "priceCents": 650000,
+    "meetingPoints": [{ "lat": 7.842, "lng": 98.397, "label": "Royal Phuket Marina" }]
+  },
+  {
+    "productCode": "11234P29",
+    "title": "Wakeboarding at Phuket Wake Park",
+    "category": "water_sport",
+    "description": "Try cable wakeboarding at Phuket's dedicated wake park with beginner instruction, equipment, and two hours of ride time included.",
+    "durationMinutes": 150,
+    "priceCents": 140000,
+    "meetingPoints": [{ "lat": 7.847, "lng": 98.293, "label": "Phuket Wake Park, Kathu" }]
+  },
+  {
+    "productCode": "22345P30",
+    "title": "Phuket Rainy Day Indoor Activities Pass",
+    "category": "adventure",
+    "description": "All-day pass covering Phuket's top indoor attractions including Trick Eye Museum, VR arcade, and indoor go-karts.",
+    "durationMinutes": 360,
+    "priceCents": 130000,
+    "meetingPoints": [{ "lat": 7.897, "lng": 98.297, "label": "Jungceylon Mall, Patong" }]
+  },
+  {
+    "productCode": "33456P31",
+    "title": "Phuket Escape Room & Board Game Cafe Experience",
+    "category": "adventure",
+    "description": "Tackle a themed escape room challenge followed by unlimited play at a board game cafe with drinks, ideal for rainy afternoons.",
+    "durationMinutes": 180,
+    "priceCents": 80000,
+    "meetingPoints": [{ "lat": 7.883, "lng": 98.392, "label": "Phuket Old Town" }]
+  },
+  {
+    "productCode": "44567P32",
+    "title": "Baby & Toddler Splash Park Half-Day Entry",
+    "category": "water_sport",
+    "description": "Supervised water play area with shallow pools, mini slides, and splash zones designed specifically for children aged 0-5.",
+    "durationMinutes": 180,
+    "priceCents": 60000,
+    "meetingPoints": [{ "lat": 7.987, "lng": 98.292, "label": "Splash Jungle, Bang Tao" }]
+  },
+  {
+    "productCode": "55678P33",
+    "title": "Wat Chalong Temple Visit & Meditation Workshop",
+    "category": "temple_tour",
+    "description": "Tour Phuket's most revered temple with a monk-led introduction to Buddhist meditation, suitable for all backgrounds and fitness levels.",
+    "durationMinutes": 150,
+    "priceCents": 30000,
+    "meetingPoints": [{ "lat": 7.826, "lng": 98.364, "label": "Wat Chalong" }]
+  },
+  {
+    "productCode": "66789P34",
+    "title": "Phuket Batik Painting & Tie-Dye Workshop",
+    "category": "cultural",
+    "description": "Create your own batik fabric art and tie-dye T-shirt in a hands-on workshop led by a local artisan, great for all ages and rainy days.",
+    "durationMinutes": 150,
+    "priceCents": 95000,
+    "meetingPoints": [{ "lat": 7.883, "lng": 98.392, "label": "Phuket Old Town" }]
+  }
+]
