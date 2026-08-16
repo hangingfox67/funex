@@ -1,0 +1,20 @@
+{
+  "name": "funex",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "db:generate": "pnpm --filter @funex/graph generate",
+    "db:migrate": "pnpm --filter @funex/graph migrate",
+    "db:seed": "pnpm --filter @funex/graph seed",
+    "sync": "MOCK_VIATOR=1 pnpm --filter @funex/viator-connector sync",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  }
+}

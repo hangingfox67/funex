@@ -1,0 +1,96 @@
+version: 1
+
+attributes:
+  min_age:
+    type: integer
+    unit: years
+    risk_class: safety
+    description: Minimum participant age set by operator
+
+  age_fit:
+    type: range
+    unit: years
+    risk_class: info
+    description: Ideal age range for enjoyment
+
+  mobility:
+    type: enum
+    values: [full, moderate, limited]
+    risk_class: safety
+    description: Required mobility level
+
+  intensity:
+    type: enum
+    values: [low, moderate, high, extreme]
+    risk_class: info
+    description: Physical intensity of the activity
+
+  seasickness_risk:
+    type: enum
+    values: [none, low, moderate, high]
+    risk_class: safety
+    description: Risk of seasickness during the activity
+
+  sun_exposure:
+    type: enum
+    values: [none, partial, full]
+    risk_class: info
+    description: Degree of sun exposure during activity
+
+  indoor:
+    type: boolean
+    risk_class: info
+    description: Whether the activity is primarily indoors
+
+  rain_viable:
+    type: boolean
+    risk_class: info
+    description: Whether the activity works well in rain
+
+  best_months:
+    type: array
+    items: month
+    risk_class: info
+    description: Best months for this activity
+
+  best_time_of_day:
+    type: enum
+    values: [morning, midday, evening, any]
+    risk_class: info
+    description: Optimal time of day
+
+  crowding_by_season:
+    type: object
+    keys: [high, shoulder, low]
+    values: [empty, quiet, moderate, busy, packed]
+    risk_class: info
+    description: Typical crowding level by season
+
+  group_type:
+    type: array
+    items:
+      type: enum
+      values: [solo, couple, family, friends, large_group]
+    risk_class: info
+    description: Suitable group types
+
+  non_swimmer_ok:
+    type: boolean
+    risk_class: safety
+    description: Whether non-swimmers can safely participate
+
+  advance_booking_needed:
+    type: enum
+    values: [no, recommended, required]
+    risk_class: info
+    description: Whether advance booking is needed
+
+  wheelchair_accessible:
+    type: boolean
+    risk_class: safety
+    description: Whether the venue and activity are wheelchair accessible
+
+  pregnant_ok:
+    type: boolean
+    risk_class: safety
+    description: Whether safe for pregnant participants
