@@ -1,0 +1,19 @@
+# Corrections for batch cal-20260818
+# Place your corrections in corrections-cal-20260818.yaml (same dir, remove .example)
+# Each entry overrides the LLM extraction for that experience+attribute.
+# A correction counts as a second evidence source, which promotes
+# single-source safety attributes from "unconfirmed" to "confirmed".
+#
+# Fields:
+#   experience_id: required
+#   attribute: required (ontology key)
+#   value: optional (override the extracted value)
+#   confidence: optional (override the confidence score)
+#   note: required (why you're correcting — stored in evidence)
+
+# Example:
+# - experience_id: exp_phuket_0024
+#   attribute: mobility
+#   value: "full"
+#   confidence: 0.95
+#   note: "Jungle trail to waterfall involves slippery rocks and steep terrain — full mobility required"

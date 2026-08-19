@@ -1,0 +1,188 @@
+# Corrections for batch cal-20260818 — Dan's line-by-line review
+
+# ── 0001: Phi Phi Islands Speedboat Tour ──
+- experience_id: exp_phuket_0001
+  attribute: min_age
+  value: 0
+  confidence: 0.9
+  note: "Not stated; Thai boat tours routinely take babies with life vests"
+
+- experience_id: exp_phuket_0001
+  attribute: non_swimmer_ok
+  value: true
+  confidence: 0.9
+  note: "Life jackets provided, snorkeling optional"
+
+- experience_id: exp_phuket_0001
+  attribute: seasickness_risk
+  note: "Rises with monsoon swell Jun–Nov; moderate is correct year-round average"
+
+# ── 0002: James Bond Island & Phang Nga Bay ──
+- experience_id: exp_phuket_0002
+  attribute: min_age
+  value: 0
+  confidence: 0.9
+  note: "Phang Nga is sheltered bay — only exposed to rare northerly swell"
+
+- experience_id: exp_phuket_0002
+  attribute: non_swimmer_ok
+  value: true
+  confidence: 0.9
+  note: "Phang Nga is sheltered bay — only exposed to rare northerly swell"
+
+# ── 0003: Similan Islands Full-Day ──
+- experience_id: exp_phuket_0003
+  attribute: min_age
+  value: 0
+  confidence: 0.85
+  note: "Parents take turns; snorkel ability varies per child — agent should ask, not data prohibit"
+
+- experience_id: exp_phuket_0003
+  attribute: non_swimmer_ok
+  value: true
+  confidence: 0.85
+  note: "Can join boat/beach, take turns"
+
+# ── 0009: Half-Day Snorkeling to Racha Island ──
+- experience_id: exp_phuket_0009
+  attribute: min_age
+  value: 0
+  confidence: 0.85
+  note: "Parents take turns; snorkel ability varies per child — agent should ask, not data prohibit"
+
+- experience_id: exp_phuket_0009
+  attribute: non_swimmer_ok
+  value: true
+  confidence: 0.85
+  note: "Can join boat/beach, take turns"
+
+# ── 0011: Morning Thai Cooking Class ──
+- experience_id: exp_phuket_0011
+  attribute: pregnant_ok
+  value: true
+  confidence: 0.9
+  note: "Light participation, can sit"
+
+- experience_id: exp_phuket_0011
+  attribute: wheelchair_accessible
+  note: "Market partially accessible — needs v2 enum; low confidence stands"
+
+# ── 0014: Family Cooking Class for Kids & Parents ──
+- experience_id: exp_phuket_0014
+  attribute: pregnant_ok
+  value: true
+  confidence: 0.9
+  note: "Confirmed safe"
+
+- experience_id: exp_phuket_0014
+  attribute: min_age
+  note: "Parental judgment; kitchen supervision, not a hard floor"
+
+# ── 0015: Big Buddha, Wat Chalong & Old Town Tour ──
+- experience_id: exp_phuket_0015
+  attribute: min_age
+  value: 0
+  confidence: 0.9
+  note: "Temples welcome all ages"
+
+- experience_id: exp_phuket_0015
+  attribute: mobility
+  note: "Walking-capable elderly fine"
+
+- experience_id: exp_phuket_0015
+  attribute: wheelchair_accessible
+  note: "Constraint is vehicle, not venues"
+
+# ── 0019: ATV Adventure — min_age 16 stands ──
+
+# ── 0021: Surf Lesson at Kata Beach ──
+- experience_id: exp_phuket_0021
+  attribute: min_age
+  value: 6
+  confidence: 0.9
+  note: "Foam boards, sandy bottom, instructor-supervised — 6 is standard"
+
+# ── 0023: Elephant Sanctuary ──
+- experience_id: exp_phuket_0023
+  attribute: non_swimmer_ok
+  value: true
+  confidence: 0.95
+  note: "Knee-deep bathing only"
+
+- experience_id: exp_phuket_0023
+  attribute: min_age
+  note: "Take-turns applies"
+
+# ── 0024: Elephant Jungle Walk & Waterfall ──
+- experience_id: exp_phuket_0024
+  attribute: min_age
+  value: 0
+  confidence: 0.85
+  note: "Take-turns applies; carriers work for toddlers on easier sections"
+
+# ── 0030: Thai Massage & Spa ──
+- experience_id: exp_phuket_0030
+  attribute: min_age
+  value: 3
+  confidence: 0.85
+  note: "Gentle pressure for kids"
+
+- experience_id: exp_phuket_0030
+  attribute: pregnant_ok
+  value: true
+  confidence: 0.85
+  note: "Soft oil massage not deep Thai stretching; foot massage any stage; must inform therapist"
+
+# ── 0032: Beachside Yoga ──
+- experience_id: exp_phuket_0032
+  attribute: pregnant_ok
+  value: true
+  confidence: 0.85
+  note: "Stage-dependent, modify poses"
+
+- experience_id: exp_phuket_0032
+  attribute: indoor
+  value: false
+  confidence: 0.95
+  note: "Restore to textual — beach session is clearly outdoors, validator false-positive on paraphrased quote"
+
+# ── 0033: Street Food Tour ──
+- experience_id: exp_phuket_0033
+  attribute: min_age
+  value: 0
+  confidence: 0.9
+  note: "Tuk-tuks take all ages; food is family activity"
+
+# ── 0039: Simon Cabaret ──
+- experience_id: exp_phuket_0039
+  attribute: wheelchair_accessible
+  value: "unknown"
+  confidence: 0.5
+  note: "Likely yes, limited spaces — confirm at booking"
+
+# ── 0044: Luxury Yacht Sunset Cruise ──
+- experience_id: exp_phuket_0044
+  attribute: min_age
+  value: 0
+  confidence: 0.9
+  note: "Private charter, family-friendly by design"
+
+- experience_id: exp_phuket_0044
+  attribute: mobility
+  value: "limited"
+  confidence: 0.9
+  note: "Easy boarding at marina, seated dining, calm cruise"
+
+- experience_id: exp_phuket_0044
+  attribute: non_swimmer_ok
+  value: true
+  confidence: 0.95
+  note: "With life jacket; no mandatory water entry on a dinner cruise"
+
+- experience_id: exp_phuket_0044
+  attribute: pregnant_ok
+  value: true
+  confidence: 0.9
+  note: "Easy boarding, calm dining cruise — unlike speedboats"
+
+# ── 0046, 0048: stand as extracted ──

@@ -1,3 +1,7 @@
+import { config } from 'dotenv';
+import { resolve, dirname } from 'path';
+import { fileURLToPath } from 'url';
+config({ path: resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '..', '.env'), override: true });
 import { client } from '@funex/graph';
 import { syncCatalog } from './sync.js';
 
