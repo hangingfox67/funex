@@ -4,7 +4,7 @@ import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 config({ path: resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '.env'), override: true });
 
-import { writeFileSync, mkdirSync, existsSync } from 'fs';
+import { writeFileSync, readFileSync, mkdirSync, existsSync } from 'fs';
 import Anthropic from '@anthropic-ai/sdk';
 import { client as pgClient } from '@funex/graph';
 import { loadOntology, preparePrompt } from './extract.js';
@@ -78,7 +78,34 @@ async function main() {
     process.exit(1);
   }
 
-  console.log(`\nSubmitting ${requests.length} requests to Message Batches API...`);
+  // ── Spend gate ──
+  const calibrationPath = resolve(diffDir, 'calibration-cost.json');
+  let costPerItem = 0.05; // conservative default until first calibration
+  let costSource = 'default estimate';
+  if (existsSync(calibrationPath)) {
+    try {
+      const cal = JSON.parse(readFileSync(calibrationPath, 'utf-8'));
+      costPerItem = cal.costPerItem;
+      costSource = `measured from ${cal.measuredFrom} (${cal.sampleSize} products, ${cal.model})`;
+    } catch { /* use default */ }
+  }
+  const estimatedCost = requests.length * costPerItem;
+  console.log(`\n── Spend gate ──`);
+  console.log(`  Cost/item:      $${costPerItem.toFixed(4)} (${costSource})`);
+  console.log(`  Items:          ${requests.length}`);
+  console.log(`  Estimated cost: $${estimatedCost.toFixed(2)} USD`);
+  if (estimatedCost > 5) {
+    console.error(`\n  BLOCKED: estimated cost $${estimatedCost.toFixed(2)} exceeds $5 gate.`);
+    console.error(`  Get Dan's explicit go before re-running with --force-spend.`);
+    if (!args.includes('--force-spend')) {
+      await pgClient.end();
+      process.exit(1);
+    }
+    console.log(`  --force-spend flag present, proceeding.`);
+  }
+  console.log('');
+
+  console.log(`Submitting ${requests.length} requests to Message Batches API...`);
   const batch = await anthropic.messages.batches.create({ requests });
 
   console.log(`\nBatch submitted.`);

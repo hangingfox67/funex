@@ -12,6 +12,10 @@
     "sync": "MOCK_VIATOR=1 pnpm --filter @funex/viator-connector sync",
     "enrich:extract": "pnpm --filter @funex/enrich extract",
     "enrich:approve": "pnpm --filter @funex/enrich approve",
+    "enrich:submit": "pnpm --filter @funex/enrich submit",
+    "enrich:status": "pnpm --filter @funex/enrich status",
+    "enrich:collect": "pnpm --filter @funex/enrich collect",
+    "ops:health": "bash scripts/ops-health.sh",
     "test": "vitest run",
     "test:watch": "vitest"
   },

@@ -4,7 +4,7 @@ import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 config({ path: resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '.env'), override: true });
 
-import { readFileSync } from 'fs';
+import { readFileSync, writeFileSync } from 'fs';
 import Anthropic from '@anthropic-ai/sdk';
 import { client as pgClient, db, experiences } from '@funex/graph';
 import { eq } from 'drizzle-orm';
@@ -124,6 +124,22 @@ async function main() {
   };
 
   const diffPath = writeDiff(results, metadata, batchId);
+
+  // Write calibration cost constant for spend gate
+  if (results.length > 0) {
+    const costPerItem = totalCostUsd / results.length;
+    const calibrationPath = resolve(diffDir, 'calibration-cost.json');
+    writeFileSync(calibrationPath, JSON.stringify({
+      costPerItem,
+      measuredFrom: batchId,
+      measuredAt: new Date().toISOString(),
+      sampleSize: results.length,
+      totalCostUsd,
+      model: EXTRACT_MODEL,
+      promptVersion: EXTRACT_PROMPT_VERSION,
+    }, null, 2), 'utf-8');
+    console.log(`\nCalibration cost updated: $${costPerItem.toFixed(4)}/item (from ${results.length} products)`);
+  }
 
   console.log(`\nBatch collected.`);
   console.log(`  Products: ${results.length}/${tracking.productIds.length}`);

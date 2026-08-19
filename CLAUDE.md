@@ -96,6 +96,13 @@ Generate 25 into `/fixtures/personas/`, covering the facet grid: party shapes (t
 - Which 3–4 "weird" products go in the Day-3 calibration set.
 - Anything requiring a paid signup or a legal/entity decision: stop and ask.
 
+## Operations discipline
+
+1. **No babysitting.** Anything expected to run >5 min uses (a) a server-side Batch API job, or (b) a detached local process (`nohup`/`systemd-run`, memory-capped) writing progress to a log. Submit, print how to check, END TURN. `sleep`/`tail` polling loops are forbidden.
+2. **Heartbeat files.** Every long job writes a heartbeat (items done, tokens, cost) to a status file (e.g. `diffs/<batch>.batch.json`). Status commands read files, never watch processes.
+3. **Spend gate.** Before ANY batch submission, print estimated cost (`items × measured $/item`). Estimated cost > $5 requires Dan's explicit go in that conversation. The measured calibration cost (from the first successful batch) is the estimator constant.
+4. **`pnpm ops:health`.** One command printing RAM/swap, disk, docker status, node version, and any pending batch states. This is the answer to "what is happening" from any bare shell.
+
 ## Out of scope — do not build even if idle
 
 OAuth/profiles, GYG or marketplace connectors, LLM re-ranker, supplier/LINE features, ChatGPT app submission assets (Dan handles submission manually after A6), Gemini/Grok anything, payment code of any kind.
