@@ -13,23 +13,35 @@ import {
 import type { RailConnector } from './interface.js';
 import { createViatorConnector } from './factory.js';
 
+/**
+ * Sync catalog from Viator (mock or real).
+ *
+ * source = 'fixture' for mock products (kept for tests, excluded from serving).
+ * source = 'viator' for real API products (fresh exp_ids based on product code).
+ */
 export async function syncCatalog(
   db: typeof defaultDb = defaultDb,
   connector?: RailConnector,
+  options: { source?: 'fixture' | 'viator' } = {},
 ) {
   const conn = connector ?? createViatorConnector();
+  const source = options.source ?? (process.env.MOCK_VIATOR === '1' || !process.env.VIATOR_API_KEY ? 'fixture' : 'viator');
   const sessionId = createSessionId();
   const events = createEventWriter(db);
 
   await ensureSession(db, sessionId, 'phuket');
-  await events.log(sessionId, 'sync.started', { provider: 'viator', destination: 'phuket' });
+  await events.log(sessionId, 'sync.started', { provider: 'viator', destination: 'phuket', source });
 
   const products = await conn.syncCatalog('phuket');
 
   let synced = 0;
   for (let i = 0; i < products.length; i++) {
     const p = products[i];
-    const expId = `exp_phuket_${String(i + 1).padStart(4, '0')}`;
+
+    // Fixture products use sequential IDs; real products use productCode-based IDs
+    const expId = source === 'fixture'
+      ? `exp_phuket_${String(i + 1).padStart(4, '0')}`
+      : `exp_${p.productCode}`;
 
     // Upsert experience
     await db
@@ -70,7 +82,7 @@ export async function syncCatalog(
         },
       });
 
-    // Upsert rail (one synthetic "offer")
+    // Upsert rail
     await db
       .insert(rails)
       .values({
@@ -91,13 +103,17 @@ export async function syncCatalog(
       });
 
     synced++;
+    if (synced % 100 === 0) {
+      console.log(`  Synced ${synced}/${products.length} to DB...`);
+    }
   }
 
   await events.log(sessionId, 'sync.completed', {
     provider: 'viator',
     destination: 'phuket',
+    source,
     count: synced,
   });
 
-  return { sessionId, synced };
+  return { sessionId, synced, source };
 }

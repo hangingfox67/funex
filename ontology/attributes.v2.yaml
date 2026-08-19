@@ -1,0 +1,161 @@
+version: 2
+
+attributes:
+  # ── Age (replaces min_age from v1) ──
+
+  stated_min_age:
+    type: integer
+    unit: years
+    risk_class: safety
+    description: Minimum age explicitly stated by the operator. Null when operator is silent — never infer.
+    inference_basis_constraint: textual_only
+    note: "textual basis ONLY. If the source text does not state a minimum age, value MUST be null."
+
+  with_adult_from:
+    type: integer
+    unit: years
+    risk_class: info
+    description: Youngest age that can participate when accompanied by an adult. Default 0 unless the activity has a genuine physical floor.
+    default: 0
+
+  independent_from:
+    type: integer
+    unit: years
+    risk_class: safety
+    description: Youngest age for independent participation (no accompanying adult required). E.g. ATV 16, surf solo 12.
+
+  # ── Suitability ──
+
+  age_fit:
+    type: range
+    unit: years
+    risk_class: info
+    description: Ideal age range for enjoyment
+
+  mobility:
+    type: enum
+    values: [full, moderate, limited]
+    risk_class: safety
+    description: Required mobility level
+
+  intensity:
+    type: enum
+    values: [low, moderate, high, extreme]
+    risk_class: info
+    description: Physical intensity of the activity
+
+  partial_participation_ok:
+    type: object
+    fields:
+      value: boolean
+      note: string
+    risk_class: info
+    description: "Can someone accompany or enjoy without doing the headline activity? E.g. pregnant spectator, take-turns parents at snorkel stop, seated grandparent at cooking class."
+
+  group_type:
+    type: array
+    items:
+      type: enum
+      values: [solo, couple, family, friends, large_group]
+    risk_class: info
+    description: Suitable group types
+
+  advance_booking_needed:
+    type: enum
+    values: [no, recommended, required]
+    risk_class: info
+    description: Whether advance booking is needed
+
+  # ── Water / marine ──
+
+  seasickness_risk:
+    type: enum
+    values: [none, low, moderate, high]
+    risk_class: safety
+    description: Risk of seasickness during the activity
+
+  vessel_type:
+    type: enum
+    values: [speedboat, longtail, catamaran, yacht, ferry, none]
+    risk_class: info
+    description: Type of boat/vessel used. "none" for land-based activities.
+
+  water_exposure:
+    type: enum
+    values: [sheltered_bay, coastal, open_sea, none]
+    risk_class: info
+    description: "Degree of open-water exposure. sheltered_bay = Phang Nga; coastal = Coral/Racha; open_sea = Phi Phi/Similan crossing."
+
+  non_swimmer_ok:
+    type: boolean
+    risk_class: safety
+    description: Whether non-swimmers can safely participate
+
+  # ── Environment ──
+
+  sun_exposure:
+    type: enum
+    values: [none, partial, full]
+    risk_class: info
+    description: Degree of sun exposure during activity
+
+  indoor:
+    type: boolean
+    risk_class: info
+    description: Whether the activity is primarily indoors
+
+  rain_viable:
+    type: boolean
+    risk_class: info
+    description: Whether the activity works well in rain
+
+  best_months:
+    type: array
+    items: month
+    risk_class: info
+    description: Best months for this activity
+
+  seasonal_closure:
+    type: object
+    fields:
+      months: array
+      source_note: string
+    risk_class: info
+    description: "Months when the activity is closed/unavailable. E.g. Similan Islands closed May–Oct (national park). source_note must cite the authority (national park service, operator website, etc.)."
+
+  best_time_of_day:
+    type: enum
+    values: [morning, midday, evening, any]
+    risk_class: info
+    description: Optimal time of day
+
+  crowding_by_season:
+    type: object
+    keys: [high, shoulder, low]
+    values: [empty, quiet, moderate, busy, packed]
+    risk_class: info
+    description: Typical crowding level by season
+
+  # ── Accessibility ──
+
+  wheelchair_access:
+    type: enum
+    values: [yes, partial, no, unknown]
+    risk_class: safety
+    description: "Wheelchair accessibility. 'unknown' + confirm_at_booking serves as 'confirm when booking' — never silent false."
+
+  access_constraint:
+    type: enum
+    values: [vehicle, terrain, venue, none]
+    risk_class: info
+    description: "Primary barrier to wheelchair access. vehicle = transfer van/boat boarding; terrain = uneven ground; venue = steps/narrow passages; none = fully accessible."
+
+  confirm_at_booking:
+    type: boolean
+    risk_class: info
+    description: "Whether accessibility details should be confirmed with the operator at booking time. True when wheelchair_access is 'unknown' or 'partial'."
+
+  pregnant_ok:
+    type: boolean
+    risk_class: safety
+    description: Whether safe for pregnant participants

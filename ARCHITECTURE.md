@@ -113,7 +113,7 @@ publish diff
 `context(destination, zone|hotel, date) → snapshot`
 
 - **weather** — forecast API, cached per zone/day
-- **marine** — sea state (declared per destination in its yaml under `env_variables:`; Phuket declares `marine`, a ski town would declare `snow`)
+- **marine** — `sea_state_today` computed from Open-Meteo Marine API swell height + direction × per-route `exposed_to` directions in `phuket.yaml` × `seasonal_closure` calendar from ontology v2. A Phi Phi speedboat route exposed to SW swell triggers "rough" at lower thresholds than a Phang Nga longtail exposed only to rare northerly swell. Declared per destination in its yaml under `env_variables:`; Phuket declares `marine`, a ski town would declare `snow`
 - **travel_time** — precomputed matrix: zone × meeting_point × time-bucket (morning / midday / evening), refreshed weekly; hotel names geocoded to nearest zone, on-demand exact routing only when a hotel is given
 - **season** — holiday/high-season calendar per destination
 

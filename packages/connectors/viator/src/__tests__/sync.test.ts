@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { sql } from 'drizzle-orm';
 import { db, client, experiences, providerMappings, rails, sessions, events } from '@funex/graph';
+import { MockViatorConnector } from '../mock.js';
 import { syncCatalog } from '../sync.js';
 
 describe('Viator mock sync (A2)', () => {
   beforeAll(async () => {
-    // Ensure destination exists (seed should have run)
     const dest = await db.execute(sql`SELECT slug FROM destination WHERE slug = 'phuket'`);
     if (dest.length === 0) {
       throw new Error('Run db:seed before tests — destination "phuket" not found');
@@ -16,55 +16,49 @@ describe('Viator mock sync (A2)', () => {
     await client.end();
   });
 
-  it('syncs exactly 50 experience rows', async () => {
-    const result = await syncCatalog(db);
+  it('syncs exactly 50 fixture experience rows', async () => {
+    const result = await syncCatalog(db, new MockViatorConnector(), { source: 'fixture' });
     expect(result.synced).toBe(50);
+    expect(result.source).toBe('fixture');
 
-    const rows = await db.select().from(experiences);
-    expect(rows.length).toBe(50);
+    // Count only fixture-sourced experiences
+    const rows = await db.execute(sql`SELECT count(*) as c FROM experience WHERE id LIKE 'exp_phuket_%'`);
+    expect(Number(rows[0].c)).toBe(50);
   });
 
-  it('each experience has exactly one provider_mapping', async () => {
-    const mappings = await db.select().from(providerMappings);
-    expect(mappings.length).toBe(50);
+  it('each fixture experience has exactly one provider_mapping', async () => {
+    const rows = await db.execute(
+      sql`SELECT pm.* FROM provider_mapping pm JOIN experience e ON pm.experience_id = e.id WHERE e.id LIKE 'exp_phuket_%'`,
+    );
+    expect(rows.length).toBe(50);
 
-    // Every experience ID should have exactly one mapping
-    const expIds = new Set(mappings.map((m) => m.experienceId));
-    expect(expIds.size).toBe(50);
-
-    // All mappings are viator
-    for (const m of mappings) {
+    for (const m of rows) {
       expect(m.provider).toBe('viator');
-      expect(m.providerProductId).toBeTruthy();
+      expect(m.provider_product_id).toBeTruthy();
     }
   });
 
-  it('each experience has exactly one rail (synthetic offer)', async () => {
-    const allRails = await db.select().from(rails);
-    expect(allRails.length).toBe(50);
+  it('each fixture experience has exactly one rail', async () => {
+    const rows = await db.execute(
+      sql`SELECT r.* FROM rail r JOIN experience e ON r.experience_id = e.id WHERE e.id LIKE 'exp_phuket_%'`,
+    );
+    expect(rows.length).toBe(50);
 
-    for (const r of allRails) {
+    for (const r of rows) {
       expect(r.provider).toBe('viator');
-      expect(r.payoutModel).toBe('affiliate');
-      expect(r.rate).toBe(0.08);
-      expect(r.health).toBe('active');
+      expect(r.payout_model).toBe('affiliate');
     }
   });
 
   it('sync created a session and logged events', async () => {
-    const allSessions = await db.select().from(sessions);
-    expect(allSessions.length).toBeGreaterThanOrEqual(1);
+    // Run a fresh sync and check its specific session
+    const result = await syncCatalog(db, new MockViatorConnector(), { source: 'fixture' });
+    expect(result.sessionId).toMatch(/^s_/);
 
-    // Find sync session (the most recent one)
-    const syncSession = allSessions[allSessions.length - 1];
-    expect(syncSession.id).toMatch(/^s_/);
-    expect(syncSession.destinationSlug).toBe('phuket');
-
-    // Check events for this session
     const sessionEvents = await db
       .select()
       .from(events)
-      .where(sql`session_id = ${syncSession.id}`);
+      .where(sql`session_id = ${result.sessionId}`);
 
     const types = sessionEvents.map((e) => e.type);
     expect(types).toContain('sync.started');

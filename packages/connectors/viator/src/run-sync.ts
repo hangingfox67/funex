@@ -6,9 +6,10 @@ import { client } from '@funex/graph';
 import { syncCatalog } from './sync.js';
 
 async function main() {
-  console.log('Starting Viator mock sync...');
+  const source = process.env.MOCK_VIATOR === '1' || !process.env.VIATOR_API_KEY ? 'fixture' : 'viator';
+  console.log(`Starting Viator sync (source: ${source})...`);
   const result = await syncCatalog();
-  console.log(`Synced ${result.synced} experiences (session: ${result.sessionId})`);
+  console.log(`Synced ${result.synced} experiences from ${result.source} (session: ${result.sessionId})`);
   await client.end();
 }
 

@@ -67,25 +67,48 @@ describe('phuket.yaml', () => {
   });
 });
 
-describe('attributes.v1.yaml', () => {
+describe('attributes.v2.yaml', () => {
   const raw = readFileSync(
-    resolve(repoRoot, 'ontology', 'attributes.v1.yaml'),
+    resolve(repoRoot, 'ontology', 'attributes.v2.yaml'),
     'utf-8',
   );
   const ontology = parseYaml(raw);
 
-  it('has version 1', () => {
-    expect(ontology.version).toBe(1);
+  it('has version 2', () => {
+    expect(ontology.version).toBe(2);
   });
 
   it('defines core attributes', () => {
     const keys = Object.keys(ontology.attributes);
     for (const expected of [
-      'min_age', 'mobility', 'intensity', 'seasickness_risk',
+      'stated_min_age', 'with_adult_from', 'independent_from',
+      'mobility', 'intensity', 'seasickness_risk',
       'indoor', 'rain_viable', 'non_swimmer_ok', 'group_type',
+      'partial_participation_ok', 'vessel_type', 'water_exposure',
+      'wheelchair_access', 'access_constraint', 'confirm_at_booking',
+      'seasonal_closure',
     ]) {
       expect(keys, `missing attribute: ${expected}`).toContain(expected);
     }
+  });
+
+  it('replaces min_age with three age fields', () => {
+    const keys = Object.keys(ontology.attributes);
+    expect(keys).not.toContain('min_age');
+    expect(keys).toContain('stated_min_age');
+    expect(keys).toContain('with_adult_from');
+    expect(keys).toContain('independent_from');
+  });
+
+  it('stated_min_age has textual_only constraint', () => {
+    const attr = ontology.attributes.stated_min_age as Record<string, unknown>;
+    expect(attr.inference_basis_constraint).toBe('textual_only');
+  });
+
+  it('wheelchair_access is enum with unknown option', () => {
+    const attr = ontology.attributes.wheelchair_access as Record<string, unknown>;
+    expect(attr.type).toBe('enum');
+    expect(attr.values).toContain('unknown');
   });
 
   it('every attribute has type and risk_class', () => {
@@ -100,7 +123,10 @@ describe('attributes.v1.yaml', () => {
     const safetyKeys = Object.entries(ontology.attributes)
       .filter(([, a]) => (a as Record<string, unknown>).risk_class === 'safety')
       .map(([k]) => k);
-    for (const expected of ['min_age', 'mobility', 'non_swimmer_ok', 'seasickness_risk']) {
+    for (const expected of [
+      'stated_min_age', 'independent_from', 'mobility',
+      'non_swimmer_ok', 'seasickness_risk', 'wheelchair_access', 'pregnant_ok',
+    ]) {
       expect(safetyKeys).toContain(expected);
     }
   });

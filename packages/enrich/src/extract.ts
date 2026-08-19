@@ -43,9 +43,17 @@ const INPUT_COST_PER_TOKEN = 3 / 1_000_000;
 const OUTPUT_COST_PER_TOKEN = 15 / 1_000_000;
 
 function loadOntology(): Record<string, unknown> {
-  const raw = readFileSync(resolve(repoRoot, 'ontology', 'attributes.v1.yaml'), 'utf-8');
+  // V2 ontology if available, fallback to v1
+  const v2Path = resolve(repoRoot, 'ontology', 'attributes.v2.yaml');
+  const v1Path = resolve(repoRoot, 'ontology', 'attributes.v1.yaml');
+  const path = existsSync(v2Path) ? v2Path : v1Path;
+  const raw = readFileSync(path, 'utf-8');
   const parsed = parseYaml(raw);
   return parsed.attributes;
+}
+
+function existsSync(p: string): boolean {
+  try { readFileSync(p); return true; } catch { return false; }
 }
 
 export async function extractOne(
@@ -63,32 +71,55 @@ export async function extractOne(
 
   if (!exp) throw new Error(`Experience not found: ${experienceId}`);
 
-  // Load fixture description (derive-then-discard: used for extraction only, never stored)
-  // Resolution is by provider_mapping.providerProductId → fixture.productCode, never array index.
+  // Load description for extraction (derive-then-discard: never stored per directive 3).
+  // Fixture products: resolved by providerProductId → fixture.productCode.
+  // Real products: fetched from Viator API by productCode.
   let description = '';
-  let sourceText = '';  // normalized source text for textual evidence validation
+  let sourceText = '';
   try {
     const [mapping] = await db
       .select()
       .from(providerMappings)
       .where(eq(providerMappings.experienceId, experienceId));
     if (mapping) {
-      const fixture: { productCode: string; title: string; description: string }[] = JSON.parse(
-        readFileSync(resolve(repoRoot, 'fixtures', 'viator-sample.json'), 'utf-8'),
-      );
-      const product = fixture.find((p) => p.productCode === mapping.providerProductId);
-      if (!product) {
-        throw new Error(
-          `Fixture product not found for mapping: experienceId=${experienceId}, ` +
-          `providerProductId=${mapping.providerProductId}. Resolution must be by productCode, not array index.`,
+      const isFixture = experienceId.startsWith('exp_phuket_');
+
+      if (isFixture) {
+        // Fixture: read from viator-sample.json
+        const fixture: { productCode: string; title: string; description: string }[] = JSON.parse(
+          readFileSync(resolve(repoRoot, 'fixtures', 'viator-sample.json'), 'utf-8'),
         );
+        const product = fixture.find((p) => p.productCode === mapping.providerProductId);
+        if (!product) {
+          throw new Error(
+            `Fixture product not found for mapping: experienceId=${experienceId}, ` +
+            `providerProductId=${mapping.providerProductId}. Resolution must be by productCode, not array index.`,
+          );
+        }
+        description = product.description;
+      } else {
+        // Real product: fetch from Viator API
+        const apiKey = process.env.VIATOR_API_KEY;
+        if (apiKey) {
+          const resp = await fetch(`https://api.viator.com/partner/products/${mapping.providerProductId}`, {
+            headers: {
+              'exp-api-key': apiKey,
+              'Accept': 'application/json;version=2.0',
+              'Accept-Language': 'en-US',
+            },
+          });
+          if (resp.ok) {
+            const data = await resp.json();
+            description = data.description ?? '';
+          }
+        }
       }
-      description = product.description;
-      sourceText = `${product.title} ${product.description}`.toLowerCase();
+
+      sourceText = `${exp.title} ${description}`.toLowerCase();
     }
   } catch (err) {
     if ((err as Error).message.includes('Fixture product not found')) throw err;
-    /* fixture may not exist in non-mock mode */
+    /* API fetch failures are non-fatal — we still have title + category */
   }
 
   const prompt = buildExtractionPrompt(
@@ -187,6 +218,38 @@ export async function extractOne(
         attr.confidence = Math.min(attr.confidence, 0.7);
       }
     }
+  }
+
+  // ── stated_min_age: textual_only enforcement ──
+  if (attributes.stated_min_age && attributes.stated_min_age.inference_basis !== 'textual') {
+    if (attributes.stated_min_age.value !== null) {
+      console.warn(
+        `  ENFORCEMENT: ${experienceId}.stated_min_age was non-textual with value ${JSON.stringify(attributes.stated_min_age.value)} — forcing null (textual_only constraint).`,
+      );
+      attributes.stated_min_age.value = null;
+      attributes.stated_min_age.confidence = 1.0;
+      attributes.stated_min_age.evidence = 'No minimum age explicitly stated in source text. Attribute requires textual basis only.';
+      attributes.stated_min_age.inference_basis = 'structural';
+    }
+  }
+
+  // ── QA consistency flags ──
+  const flags: string[] = [];
+  const val = (k: string) => attributes[k]?.value;
+  if (val('seasickness_risk') === 'none' && val('water_exposure') && val('water_exposure') !== 'none') {
+    flags.push(`seasickness_risk=none but water_exposure=${val('water_exposure')}`);
+  }
+  if (val('vessel_type') && val('vessel_type') !== 'none' && val('water_exposure') === 'none') {
+    flags.push(`vessel_type=${val('vessel_type')} but water_exposure=none`);
+  }
+  if (val('indoor') === true && val('sun_exposure') && val('sun_exposure') !== 'none') {
+    flags.push(`indoor=true but sun_exposure=${val('sun_exposure')}`);
+  }
+  if (val('wheelchair_access') === 'no' && (!val('access_constraint') || val('access_constraint') === 'none')) {
+    flags.push('wheelchair_access=no but no access_constraint given');
+  }
+  if (flags.length > 0) {
+    console.warn(`  QA FLAGS for ${experienceId}: ${flags.join('; ')}`);
   }
 
   const inputTokens = response.usage.input_tokens;
