@@ -6,8 +6,11 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "extract": "tsx src/run-extract.ts",
-    "approve": "tsx src/run-approve.ts"
+    "extract": "NODE_OPTIONS='--max-old-space-size=512' tsx src/run-extract.ts",
+    "approve": "tsx src/run-approve.ts",
+    "submit": "NODE_OPTIONS='--max-old-space-size=512' tsx src/run-batch-submit.ts",
+    "status": "tsx src/run-batch-status.ts",
+    "collect": "NODE_OPTIONS='--max-old-space-size=512' tsx src/run-batch-collect.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",

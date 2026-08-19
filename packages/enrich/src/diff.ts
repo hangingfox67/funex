@@ -190,7 +190,11 @@ export function writeDiff(
 
   lines.push('---');
   lines.push('');
-  lines.push(`> **Status:** PENDING APPROVAL — run \`pnpm enrich:approve ${batchId}\` to apply.`);
+  if (results.length === 0) {
+    lines.push(`> **Status:** FAILED — batch produced 0 results. Not approvable.`);
+  } else {
+    lines.push(`> **Status:** PENDING APPROVAL — run \`pnpm enrich:approve ${batchId}\` to apply.`);
+  }
   lines.push('');
 
   const content = lines.join('\n');

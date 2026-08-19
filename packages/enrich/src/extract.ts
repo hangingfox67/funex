@@ -42,7 +42,7 @@ export interface BatchMetadata {
 const INPUT_COST_PER_TOKEN = 3 / 1_000_000;
 const OUTPUT_COST_PER_TOKEN = 15 / 1_000_000;
 
-function loadOntology(): Record<string, unknown> {
+export function loadOntology(): Record<string, unknown> {
   // V2 ontology if available, fallback to v1
   const v2Path = resolve(repoRoot, 'ontology', 'attributes.v2.yaml');
   const v1Path = resolve(repoRoot, 'ontology', 'attributes.v1.yaml');
@@ -263,6 +263,185 @@ export async function extractOne(
     usage: { inputTokens, outputTokens },
     costUsd,
   };
+}
+
+/** Fetch the product description and build the prompt — reusable for batch submission. */
+export async function preparePrompt(
+  experienceId: string,
+  ontology: Record<string, unknown>,
+  db: typeof defaultDb = defaultDb,
+): Promise<{ prompt: string; sourceText: string; title: string }> {
+  const [exp] = await db
+    .select()
+    .from(experiences)
+    .where(eq(experiences.id, experienceId));
+
+  if (!exp) throw new Error(`Experience not found: ${experienceId}`);
+
+  let description = '';
+  let sourceText = '';
+  try {
+    const [mapping] = await db
+      .select()
+      .from(providerMappings)
+      .where(eq(providerMappings.experienceId, experienceId));
+    if (mapping) {
+      const isFixture = experienceId.startsWith('exp_phuket_');
+
+      if (isFixture) {
+        const fixture: { productCode: string; title: string; description: string }[] = JSON.parse(
+          readFileSync(resolve(repoRoot, 'fixtures', 'viator-sample.json'), 'utf-8'),
+        );
+        const product = fixture.find((p) => p.productCode === mapping.providerProductId);
+        if (!product) {
+          throw new Error(
+            `Fixture product not found for mapping: experienceId=${experienceId}, ` +
+            `providerProductId=${mapping.providerProductId}. Resolution must be by productCode, not array index.`,
+          );
+        }
+        description = product.description;
+      } else {
+        const apiKey = process.env.VIATOR_API_KEY;
+        if (apiKey) {
+          const resp = await fetch(`https://api.viator.com/partner/products/${mapping.providerProductId}`, {
+            headers: {
+              'exp-api-key': apiKey,
+              'Accept': 'application/json;version=2.0',
+              'Accept-Language': 'en-US',
+            },
+          });
+          if (resp.ok) {
+            const data = await resp.json();
+            description = data.description ?? '';
+          }
+        }
+      }
+
+      sourceText = `${exp.title} ${description}`.toLowerCase();
+    }
+  } catch (err) {
+    if ((err as Error).message.includes('Fixture product not found')) throw err;
+  }
+
+  const prompt = buildExtractionPrompt(
+    {
+      title: exp.title,
+      category: exp.category,
+      description,
+      durationMinutes: exp.durationMinutes ?? 0,
+      priceCents: exp.basePriceCents ?? 0,
+      meetingPoints: (exp.meetingPoints ?? []) as { lat: number; lng: number; label: string }[],
+    },
+    ontology,
+  );
+
+  return { prompt, sourceText, title: exp.title };
+}
+
+/** Parse raw LLM text into validated attributes. Applies evidence check, enforcement, QA. */
+export function parseAndValidateResponse(
+  experienceId: string,
+  text: string,
+  sourceText: string,
+): Record<string, ExtractedAttribute> {
+  const cleaned = text.replace(/^```(?:json)?\s*/m, '').replace(/\s*```\s*$/m, '').trim();
+
+  let attributes: Record<string, ExtractedAttribute>;
+  try {
+    attributes = JSON.parse(cleaned);
+  } catch {
+    throw new Error(`Failed to parse extraction response for ${experienceId}:\n${cleaned}`);
+  }
+
+  // ── Textual evidence validator ──
+  if (sourceText) {
+    for (const [key, attr] of Object.entries(attributes)) {
+      if (attr.inference_basis !== 'textual') continue;
+
+      const normalize = (s: string) =>
+        s.toLowerCase()
+          .replace(/[\u2018\u2019\u201C\u201D]/g, "'")
+          .replace(/[\u2013\u2014]/g, '-')
+          .replace(/\s+/g, ' ')
+          .trim();
+
+      const normalizedSource = normalize(sourceText);
+
+      const quotedSpans = attr.evidence.match(/'([^']{3,})'/g)
+        ?.map((q) => normalize(q.slice(1, -1))) ?? [];
+
+      const citationPattern = /(?:states?|says?|explicitly|titled|described as|references?|includes?|branded as|frames? (?:this|it) as)\s+'?([^,.;]{3,}?)'?(?:[,.\s;]|$)/gi;
+      let match;
+      while ((match = citationPattern.exec(attr.evidence)) !== null) {
+        const span = normalize(match[1]);
+        if (span.length >= 3 && !quotedSpans.includes(span)) {
+          quotedSpans.push(span);
+        }
+      }
+
+      let foundSpan = false;
+      for (const span of quotedSpans) {
+        if (normalizedSource.includes(span)) {
+          foundSpan = true;
+          break;
+        }
+      }
+
+      if (!foundSpan && quotedSpans.length === 0) {
+        const evidenceNorm = normalize(attr.evidence);
+        const words = evidenceNorm.split(' ').filter((w) => w.length > 2);
+        for (let i = 0; i <= words.length - 2; i++) {
+          const bigram = words.slice(i, i + 2).join(' ');
+          if (bigram.length >= 6 && normalizedSource.includes(bigram)) {
+            foundSpan = true;
+            break;
+          }
+        }
+      }
+
+      if (!foundSpan) {
+        console.warn(
+          `  EVIDENCE CHECK FAILED: ${experienceId}.${key} claims textual basis but no matching span found in source. Marking as unverified.`,
+        );
+        attr.inference_basis = 'unverified';
+        attr.confidence = Math.min(attr.confidence, 0.7);
+      }
+    }
+  }
+
+  // ── stated_min_age: textual_only enforcement ──
+  if (attributes.stated_min_age && attributes.stated_min_age.inference_basis !== 'textual') {
+    if (attributes.stated_min_age.value !== null) {
+      console.warn(
+        `  ENFORCEMENT: ${experienceId}.stated_min_age was non-textual with value ${JSON.stringify(attributes.stated_min_age.value)} — forcing null (textual_only constraint).`,
+      );
+      attributes.stated_min_age.value = null;
+      attributes.stated_min_age.confidence = 1.0;
+      attributes.stated_min_age.evidence = 'No minimum age explicitly stated in source text. Attribute requires textual basis only.';
+      attributes.stated_min_age.inference_basis = 'structural';
+    }
+  }
+
+  // ── QA consistency flags ──
+  const flags: string[] = [];
+  const val = (k: string) => attributes[k]?.value;
+  if (val('seasickness_risk') === 'none' && val('water_exposure') && val('water_exposure') !== 'none') {
+    flags.push(`seasickness_risk=none but water_exposure=${val('water_exposure')}`);
+  }
+  if (val('vessel_type') && val('vessel_type') !== 'none' && val('water_exposure') === 'none') {
+    flags.push(`vessel_type=${val('vessel_type')} but water_exposure=none`);
+  }
+  if (val('indoor') === true && val('sun_exposure') && val('sun_exposure') !== 'none') {
+    flags.push(`indoor=true but sun_exposure=${val('sun_exposure')}`);
+  }
+  if (val('wheelchair_access') === 'no' && (!val('access_constraint') || val('access_constraint') === 'none')) {
+    flags.push('wheelchair_access=no but no access_constraint given');
+  }
+  if (flags.length > 0) {
+    console.warn(`  QA FLAGS for ${experienceId}: ${flags.join('; ')}`);
+  }
+
+  return attributes;
 }
 
 export async function extractBatch(

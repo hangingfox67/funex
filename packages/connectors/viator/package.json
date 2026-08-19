@@ -6,7 +6,7 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "sync": "tsx src/run-sync.ts"
+    "sync": "NODE_OPTIONS='--max-old-space-size=512' tsx src/run-sync.ts"
   },
   "dependencies": {
     "@funex/graph": "workspace:*",
