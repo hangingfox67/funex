@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { sql } from 'drizzle-orm';
-import { db, client } from '@funex/graph';
+import { db, client, isFixture, FIXTURE_ID_PREFIX } from '@funex/graph';
 import { buildBookingUrl, routeExperience } from '../router.js';
 
 describe('Rail router (A2)', () => {
@@ -33,7 +33,13 @@ describe('Rail router (A2)', () => {
     });
 
     it('returns a session-tagged URL for a valid experience', async () => {
-      const result = await routeExperience('exp_phuket_0001', 's_router-test', db);
+      // Use a real Viator product, not a fixture
+      const rows = await db.execute(
+        sql`SELECT id FROM experience WHERE id NOT LIKE 'exp_phuket_%' LIMIT 1`,
+      );
+      if (rows.length === 0) throw new Error('No real products synced — run sync first');
+      const expId = rows[0].id as string;
+      const result = await routeExperience(expId, 's_router-test', db);
       expect(result).not.toBeNull();
       expect(result!.url).toContain('sid=s_router-test');
       expect(result!.url).toContain('viator.com');
@@ -45,14 +51,33 @@ describe('Rail router (A2)', () => {
       expect(result).toBeNull();
     });
 
-    it('every fixture experience can be routed', async () => {
-      // Test a sample of fixture products (all 50 is slow)
+    it('rejects all fixture experiences — they must never reach agents', async () => {
       for (const i of [1, 10, 25, 50]) {
         const expId = `exp_phuket_${String(i).padStart(4, '0')}`;
         const result = await routeExperience(expId, `s_batch-${i}`, db);
-        expect(result, `routing failed for ${expId}`).not.toBeNull();
-        expect(result!.url).toContain(`sid=s_batch-${i}`);
+        expect(result, `fixture ${expId} must not be routable`).toBeNull();
       }
+    });
+
+    it('routes a real Viator experience (non-fixture)', async () => {
+      // Pick any real experience (not prefixed with exp_phuket_)
+      const rows = await db.execute(
+        sql`SELECT id FROM experience WHERE id NOT LIKE 'exp_phuket_%' LIMIT 1`,
+      );
+      if (rows.length === 0) return; // skip if no real products synced
+      const expId = rows[0].id as string;
+      expect(isFixture(expId)).toBe(false);
+      const result = await routeExperience(expId, 's_real-test', db);
+      expect(result).not.toBeNull();
+      expect(result!.url).toContain('sid=s_real-test');
+    });
+
+    it('isFixture correctly classifies IDs', () => {
+      expect(isFixture('exp_phuket_0001')).toBe(true);
+      expect(isFixture('exp_phuket_0050')).toBe(true);
+      expect(isFixture('exp_170728P24')).toBe(false);
+      expect(isFixture('exp_5594474P3')).toBe(false);
+      expect(FIXTURE_ID_PREFIX).toBe('exp_phuket_');
     });
   });
 });

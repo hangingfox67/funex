@@ -1,5 +1,5 @@
 import { eq, and } from 'drizzle-orm';
-import { rails, providerMappings, db as defaultDb } from '@funex/graph';
+import { rails, providerMappings, db as defaultDb, isFixture } from '@funex/graph';
 
 export interface BookingUrlResult {
   url: string;
@@ -37,6 +37,9 @@ export async function routeExperience(
   sessionId: string,
   db: typeof defaultDb = defaultDb,
 ): Promise<BookingUrlResult | null> {
+  // Fixture products must never be routed to agents — they don't exist on Viator.
+  if (isFixture(experienceId)) return null;
+
   // Find active rails for this experience, ordered by priority desc
   const activeRails = await db
     .select()

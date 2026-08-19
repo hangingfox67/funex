@@ -85,9 +85,9 @@ export async function approveBatch(
       const correctionKey = `${result.experienceId}.${key}`;
       const correction = corrections.get(correctionKey);
 
-      let value = attr.value;
+      let value: unknown = attr.value;
       let confidence = attr.confidence;
-      let evidenceEntries: Record<string, unknown>[] = [{
+      let evidenceEntries: { source: string; pointer: string; inference_basis: string; gate_status?: string }[] = [{
         source: 'enrichment',
         pointer: attr.evidence,
         inference_basis: attr.inference_basis ?? 'structural',
@@ -113,12 +113,11 @@ export async function approveBatch(
       );
       if (!confirmed) unconfirmed++;
 
-      const storedEvidence = evidenceEntries.map((e, i) => ({
-        ...e,
-        gate_status: i === evidenceEntries.length - 1
+      for (const [i, e] of evidenceEntries.entries()) {
+        e.gate_status = i === evidenceEntries.length - 1
           ? (confirmed ? 'confirmed' : 'unconfirmed')
-          : undefined,
-      }));
+          : undefined;
+      }
 
       await db
         .insert(attributes)
@@ -127,7 +126,7 @@ export async function approveBatch(
           key,
           value: JSON.stringify(value),
           confidence,
-          evidence: storedEvidence,
+          evidence: evidenceEntries,
           riskClass: attr.risk_class,
         })
         .onConflictDoUpdate({
