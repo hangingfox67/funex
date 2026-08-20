@@ -22,6 +22,7 @@ export interface RankRequest {
   pastActivityIds?: string[];
   energy?: 'low' | 'moderate' | 'high';
   timeBucket?: 'morning' | 'midday' | 'evening';
+  transportIntent?: boolean; // true = looking for transport, not activities
   limit?: number;
 }
 
@@ -42,8 +43,14 @@ export function rank(
 ): RankResult {
   const limit = request.limit ?? 20;
   const bucket = request.timeBucket ?? 'morning';
-  const isRainy = ctx ? ctx.weather.precipitation.probability >= 60 : false;
   const seaClass = ctx?.seaState.classification;
+
+  // Build slot-aware rain info from context
+  const rainSlots = ctx?.weather.rain_buckets ? {
+    morning: ctx.weather.rain_buckets.find((b) => b.slot === 'morning')?.rainy ?? false,
+    midday: ctx.weather.rain_buckets.find((b) => b.slot === 'midday')?.rainy ?? false,
+    evening: ctx.weather.rain_buckets.find((b) => b.slot === 'evening')?.rainy ?? false,
+  } : undefined;
 
   // Build transfer time lookup from context
   const transferMap = new Map<string, number>();
@@ -67,8 +74,9 @@ export function rank(
     budgetCents: request.budgetCents,
     maxDurationMinutes: request.maxDurationMinutes,
     maxTransferMinutes: request.maxTransferMinutes,
-    requireRainViable: request.requireRainViable,
-    isRainyDay: isRainy,
+    rainSlots,
+    requestSlot: request.timeBucket,
+    activityIntent: !request.transportIntent, // default: activity intent (exclude transport)
     excludeIds: request.pastActivityIds ? new Set(request.pastActivityIds) : undefined,
   };
 
@@ -94,7 +102,8 @@ export function rank(
     // Score
     const { tier, score, reasons } = scoreTier(exp, {
       seaClassification: seaClass,
-      isRainyDay: isRainy,
+      rainSlots,
+      requestSlot: request.timeBucket,
       season: ctx?.season.season,
       transferMinutes: avgTransfer,
       partyEnergy: request.energy,

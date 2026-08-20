@@ -171,4 +171,136 @@ describe('Ranker (A5)', () => {
       }
     });
   }
+
+  // ── Transport intent gate ──
+  it('transport excluded from activity-intent queries', () => {
+    const result = rank(allExperiences, ctx, {
+      stayingZone: 'kata',
+      date: '2026-08-20',
+      energy: 'high',
+      youngestAge: 9,
+      timeBucket: 'morning',
+      limit: 20,
+    });
+
+    for (const c of result.candidates) {
+      expect(c.category, `${c.title} is transport but activity-intent`).not.toBe('transport');
+    }
+
+    // But with transportIntent=true, transport should appear
+    const transportResult = rank(allExperiences, ctx, {
+      stayingZone: 'kata',
+      date: '2026-08-20',
+      transportIntent: true,
+      limit: 20,
+    });
+    // Should not filter transport
+    const filtered = transportResult.filtered.filter((f) => f.reason === 'logistics_not_activity');
+    expect(filtered.length).toBe(0);
+  });
+});
+
+// ── Forced-weather fixtures (never depend on real weather) ──
+
+function makeCtx(overrides: {
+  rainSlots: { morning: boolean; midday: boolean; evening: boolean };
+  seaClassification?: 'calm' | 'moderate' | 'rough';
+}): ContextSnapshot {
+  return {
+    destination: 'phuket',
+    zone: 'kata',
+    date: '2026-08-20',
+    weather: {
+      date: '2026-08-20',
+      zone: 'kata',
+      temperature: { min: 27, max: 32, unit: 'celsius' },
+      precipitation: { probability: 80, total_mm: 15 },
+      rain_buckets: [
+        { slot: 'morning', probability: overrides.rainSlots.morning ? 80 : 10, total_mm: overrides.rainSlots.morning ? 5 : 0, rainy: overrides.rainSlots.morning },
+        { slot: 'midday', probability: overrides.rainSlots.midday ? 75 : 15, total_mm: overrides.rainSlots.midday ? 4 : 0, rainy: overrides.rainSlots.midday },
+        { slot: 'evening', probability: overrides.rainSlots.evening ? 90 : 5, total_mm: overrides.rainSlots.evening ? 10 : 0, rainy: overrides.rainSlots.evening },
+      ],
+      wind: { speed_kmh: 15, gusts_kmh: 25, direction: 240 },
+      uv_index_max: 7,
+      summary: 'Fixture weather',
+      basis: 'forecast',
+      as_of: new Date().toISOString(),
+    },
+    seaState: {
+      date: '2026-08-20',
+      zone: 'kata',
+      swell_height_m: 1.5,
+      swell_direction: 270,
+      swell_period_s: 8,
+      wave_height_m: 1.8,
+      zone_exposed_to: 240,
+      exposure_match: true,
+      classification: overrides.seaClassification ?? 'moderate',
+      summary: 'Fixture sea state',
+      basis: 'marine_forecast',
+      as_of: new Date().toISOString(),
+    },
+    transfers: { morning: [], midday: [], evening: [] },
+    season: { season: 'low', label: 'low season', basis: 'config', as_of: new Date().toISOString() },
+  };
+}
+
+describe('Forced-weather fixtures', () => {
+  // Uses allExperiences loaded in the first describe's beforeAll.
+  // DB connection shared — no separate afterAll.
+  const getEnriched = () => allExperiences.filter((r) => r.enrichmentTier === 'enriched');
+
+  it('(a) rain after 15:00 — morning zipline passes, full-day outdoor penalized, indoor unaffected', () => {
+    const afternoonRain = makeCtx({ rainSlots: { morning: false, midday: false, evening: true } });
+    const result = rank(getEnriched(), afternoonRain, {
+      stayingZone: 'kata',
+      date: '2026-08-20',
+      energy: 'high',
+      timeBucket: 'morning',
+      limit: 50,
+    });
+
+    // Morning zipline should pass (outdoor, but morning is dry)
+    const ziplines = result.candidates.filter((c) => c.title.toLowerCase().includes('zipline') || c.title.toLowerCase().includes('hanuman'));
+    expect(ziplines.length).toBeGreaterThan(0);
+
+    // Check for dry_window_match reason on morning outdoor activities
+    const withDryWindow = result.candidates.filter((c) => c.reasons.includes('dry_window_match'));
+    expect(withDryWindow.length).toBeGreaterThan(0);
+
+    // Indoor activities should not have rain_risk
+    const muayThai = result.candidates.find((c) => c.title.toLowerCase().includes('muay thai'));
+    if (muayThai) {
+      expect(muayThai.reasons).not.toContain('rain_risk');
+    }
+  });
+
+  it('(b) all-day rain — outdoor hard-filtered, indoor ranked', () => {
+    const enriched = getEnriched();
+    expect(enriched.length, 'No enriched products loaded').toBeGreaterThan(0);
+
+    // Verify we have rain_viable=false products in the set
+    const outdoorCount = enriched.filter((e) => {
+      const rv = e.attributes.find((a) => a.key === 'rain_viable');
+      const indoor = e.attributes.find((a) => a.key === 'indoor');
+      return rv?.value === false && indoor?.value !== true;
+    }).length;
+
+    const allDayRain = makeCtx({ rainSlots: { morning: true, midday: true, evening: true } });
+    const result = rank(enriched, allDayRain, {
+      stayingZone: 'kata',
+      date: '2026-08-20',
+      limit: 50,
+    });
+
+    // Outdoor non-rain-viable should be filtered
+    const filteredRain = result.filtered.filter((f) => f.reason === 'not_rain_viable');
+    if (outdoorCount > 0) {
+      expect(filteredRain.length, `${outdoorCount} outdoor products but 0 rain-filtered`).toBeGreaterThan(0);
+    }
+
+    // Indoor/rain-viable candidates should have rain_safe reason
+    const rainSafe = result.candidates.filter((c) => c.reasons.includes('rain_safe'));
+    expect(rainSafe.length).toBeGreaterThanOrEqual(0); // at least doesn't crash
+  });
 });

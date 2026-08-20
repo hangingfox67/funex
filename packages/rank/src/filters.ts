@@ -4,6 +4,12 @@
  */
 import type { ExperienceRow } from './types.js';
 
+export interface RainSlotInfo {
+  morning: boolean;  // rainy in this slot?
+  midday: boolean;
+  evening: boolean;
+}
+
 export interface FilterContext {
   // Party constraints
   youngestAge?: number;
@@ -15,11 +21,14 @@ export interface FilterContext {
   budgetCents?: number;
   maxDurationMinutes?: number;
   maxTransferMinutes?: number;
-  transferMinutes?: number; // pre-resolved for this experience
+  transferMinutes?: number;
 
-  // Environment
-  requireRainViable?: boolean;
-  isRainyDay?: boolean;
+  // Environment — slot-aware rain
+  rainSlots?: RainSlotInfo;
+  requestSlot?: 'morning' | 'midday' | 'evening';
+
+  // Intent
+  activityIntent?: boolean; // true = exclude pure-logistics categories
 
   // Past
   excludeIds?: Set<string>;
@@ -27,10 +36,18 @@ export interface FilterContext {
 
 const MOBILITY_LEVEL = { limited: 0, moderate: 1, full: 2 } as const;
 
+// Categories that are pure logistics, not activities
+const LOGISTICS_CATEGORIES = new Set(['transport']);
+
 /** Returns null if passes, or a reason string if filtered out. */
 export function applyHardFilters(exp: ExperienceRow, ctx: FilterContext): string | null {
   // Past activity exclusion
   if (ctx.excludeIds?.has(exp.id)) return 'already_done';
+
+  // Intent gate: transport excluded from activity-intent queries
+  if (ctx.activityIntent && LOGISTICS_CATEGORIES.has(exp.category)) {
+    return 'logistics_not_activity';
+  }
 
   // Budget
   if (ctx.budgetCents && exp.basePriceCents && exp.basePriceCents > ctx.budgetCents) {
@@ -47,20 +64,18 @@ export function applyHardFilters(exp: ExperienceRow, ctx: FilterContext): string
     return 'too_far';
   }
 
-  // For enriched products, apply safety filters
+  // For enriched products, apply safety + weather filters
   if (exp.enrichmentTier !== 'enriched') return null;
 
   const attrs = new Map(exp.attributes.map((a) => [a.key, a]));
   const val = (k: string) => attrs.get(k)?.value;
-  const conf = (k: string) => attrs.get(k)?.confidence ?? 0;
 
-  // Age floor: with_adult_from (booking constraint) and independent_from (safety)
+  // Age floor
   if (ctx.youngestAge !== undefined) {
     const waf = val('with_adult_from') as number | undefined;
     if (waf !== undefined && waf !== null && ctx.youngestAge < waf) {
       return `age_floor:${waf}`;
     }
-    // booking_age_note also means booking constraint
     const bookingNote = val('booking_age_note') as string | undefined;
     if (bookingNote) {
       const match = bookingNote.match(/under (\d+)/);
@@ -70,7 +85,7 @@ export function applyHardFilters(exp: ExperienceRow, ctx: FilterContext): string
     }
   }
 
-  // Mobility: filter if activity requires MORE than party can handle
+  // Mobility
   if (ctx.maxMobility) {
     const mob = val('mobility') as string | undefined;
     if (mob && MOBILITY_LEVEL[mob as keyof typeof MOBILITY_LEVEL] !== undefined) {
@@ -92,11 +107,22 @@ export function applyHardFilters(exp: ExperienceRow, ctx: FilterContext): string
     if (pregOk === false) return 'not_pregnant_safe';
   }
 
-  // Rain viability
-  if (ctx.requireRainViable || ctx.isRainyDay) {
+  // Slot-aware rain filtering
+  if (ctx.rainSlots) {
     const rainOk = val('rain_viable');
-    if (rainOk === false && ctx.isRainyDay) return 'not_rain_viable';
+    const indoor = val('indoor');
+    const isIndoor = indoor === true || rainOk === true;
+
+    if (!isIndoor) {
+      const allSlotsRainy = ctx.rainSlots.morning && ctx.rainSlots.midday && ctx.rainSlots.evening;
+
+      if (allSlotsRainy) {
+        // All-day rain: hard-filter outdoor non-rain-viable products
+        return 'not_rain_viable';
+      }
+      // Slot-specific rain: handled as penalty in tiers, not hard filter
+    }
   }
 
-  return null; // passes all filters
+  return null;
 }

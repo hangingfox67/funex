@@ -18,7 +18,8 @@ export function scoreTier(
   exp: ExperienceRow,
   opts: {
     seaClassification?: 'calm' | 'moderate' | 'rough';
-    isRainyDay?: boolean;
+    rainSlots?: { morning: boolean; midday: boolean; evening: boolean };
+    requestSlot?: 'morning' | 'midday' | 'evening';
     season?: 'high' | 'shoulder' | 'low';
     transferMinutes?: number;
     partyEnergy?: 'low' | 'moderate' | 'high';
@@ -49,15 +50,32 @@ export function scoreTier(
     }
   }
 
-  // ── Rain fit ──
-  if (opts.isRainyDay) {
+  // ── Slot-aware rain fit ──
+  if (opts.rainSlots) {
     const rainOk = val('rain_viable');
     const indoor = val('indoor');
-    if (rainOk === true || indoor === true) {
-      score += 15;
-      reasons.push('rain_safe');
-    } else {
+    const isIndoor = rainOk === true || indoor === true;
+    const slot = opts.requestSlot ?? 'morning';
+    const slotRainy = opts.rainSlots[slot];
+    const anySlotDry = !opts.rainSlots.morning || !opts.rainSlots.midday || !opts.rainSlots.evening;
+    const allRainy = opts.rainSlots.morning && opts.rainSlots.midday && opts.rainSlots.evening;
+    const isFullDay = !opts.requestSlot; // no specific slot = full day
+
+    if (isIndoor) {
+      // Indoor/rain-viable: always good, bonus when it's raining
+      if (slotRainy || allRainy) { score += 15; reasons.push('rain_safe'); }
+    } else if (isFullDay && slotRainy && anySlotDry) {
+      // Full-day outdoor with partial rain: penalty
       score -= 10;
+      reasons.push('rain_risk_afternoon');
+    } else if (!slotRainy && anySlotDry) {
+      // Outdoor activity in a dry slot: positive signal
+      score += 5;
+      reasons.push('dry_window_match');
+    } else if (slotRainy) {
+      // Outdoor in a rainy slot
+      score -= 15;
+      reasons.push('rain_risk');
     }
   }
 
