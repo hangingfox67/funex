@@ -25,7 +25,7 @@ export function scoreTier(
     youngestAge?: number;
   },
 ): TierResult {
-  let score = 50; // baseline
+  let score = 35; // baseline — calibrated so excellent requires multiple positive signals
   const reasons: string[] = [];
 
   if (exp.enrichmentTier !== 'enriched') {
@@ -37,10 +37,11 @@ export function scoreTier(
   const evidence = (k: string) => attrs.get(k)?.evidence ?? [];
 
   // ── Sea state fit ──
-  if (opts.seaClassification === 'rough') {
+  if (opts.seaClassification === 'rough' || opts.seaClassification === 'moderate') {
     const waterExp = val('water_exposure') as string | undefined;
+    const isRough = opts.seaClassification === 'rough';
     if (waterExp === 'open_sea') {
-      score -= 30;
+      score -= isRough ? 30 : 15;
       reasons.push('sea_state_risk');
     } else if (waterExp === 'sheltered_bay' || waterExp === 'none') {
       score += 10;

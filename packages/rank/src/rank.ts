@@ -127,7 +127,7 @@ export function rank(
     });
   }
 
-  // Sort: enriched before basic, then by score descending, then by tier
+  // Sort: enriched before basic, then by score descending
   candidates.sort((a, b) => {
     if (a.enrichmentTier !== b.enrichmentTier) {
       return a.enrichmentTier === 'enriched' ? -1 : 1;
@@ -135,8 +135,32 @@ export function rank(
     return b.score - a.score;
   });
 
+  // ── Category spread: top N never exceeds ~3 of one category while
+  // other excellent/good-tier categories exist. Agents need a portfolio. ──
+  const MAX_PER_CATEGORY = 3;
+  const assembled: RankedCandidate[] = [];
+  const catCount = new Map<string, number>();
+  const deferred: RankedCandidate[] = [];
+
+  for (const c of candidates) {
+    const count = catCount.get(c.category) ?? 0;
+    if (count >= MAX_PER_CATEGORY && assembled.length < limit) {
+      deferred.push(c);
+    } else {
+      assembled.push(c);
+      catCount.set(c.category, count + 1);
+    }
+    if (assembled.length >= limit) break;
+  }
+
+  // Backfill from deferred if we haven't hit the limit
+  for (const c of deferred) {
+    if (assembled.length >= limit) break;
+    assembled.push(c);
+  }
+
   return {
-    candidates: candidates.slice(0, limit),
+    candidates: assembled.slice(0, limit),
     filtered,
     totalInput: experiences.length,
   };
