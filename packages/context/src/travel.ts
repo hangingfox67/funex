@@ -1,11 +1,17 @@
 /**
  * Travel time matrix: zones × meeting points × 3 time buckets.
  *
- * Uses OpenRouteService when ORS_API_KEY is set, otherwise falls back
- * to Haversine distance × average speed estimate.
+ * ORS client: api.heigit.org (primary) → api.openrouteservice.org (legacy fallback).
+ * ONE Matrix V2 request per rebuild (all zones batched). 500 matrix calls/month quota.
  *
  * Traffic factors from phuket.yaml multiply base durations per zone/bucket.
  */
+
+// ORS is migrating api.openrouteservice.org → api.heigit.org.
+// heigit matrix endpoint not yet live (404 as of 2026-08-20).
+// Try heigit first; fall back to legacy ORS. Swap when heigit activates.
+const ORS_BASE_PRIMARY = 'https://api.heigit.org/ors/v2/matrix/driving-car';
+const ORS_BASE_LEGACY = 'https://api.openrouteservice.org/v2/matrix/driving-car';
 
 export interface TransferTime {
   from_zone: string;
@@ -13,7 +19,7 @@ export interface TransferTime {
   bucket: 'morning' | 'midday' | 'evening';
   duration_minutes: number;
   distance_km: number;
-  basis: 'matrix' | 'haversine_estimate';
+  basis: 'routed' | 'haversine_estimate';
   as_of: string;
 }
 
@@ -22,7 +28,7 @@ export interface TravelMatrix {
   zones: string[];
   buckets: ('morning' | 'midday' | 'evening')[];
   transfers: TransferTime[];
-  basis: 'matrix' | 'haversine_estimate';
+  basis: 'routed' | 'haversine_estimate';
   as_of: string;
 }
 
@@ -46,15 +52,59 @@ function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): nu
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-// Phuket average road speed: ~30 km/h (hilly, winding, congested)
 const BASE_SPEED_KMH = 30;
 
 function estimateDuration(distKm: number, trafficFactor: number): number {
   return Math.round((distKm / BASE_SPEED_KMH) * 60 * trafficFactor);
 }
 
+async function tryOrsMatrix(
+  url: string,
+  apiKey: string,
+  coords: number[][],
+): Promise<{ durations: number[][]; distances: number[][]; quotaHeaders: Record<string, string> } | null> {
+  try {
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': apiKey,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        locations: coords,
+        metrics: ['duration', 'distance'],
+        units: 'km',
+      }),
+    });
+
+    // Log quota-relevant headers
+    const quotaHeaders: Record<string, string> = {};
+    for (const key of ['x-ratelimit-limit', 'x-ratelimit-remaining', 'x-ratelimit-reset', 'x-quota-limit', 'x-quota-remaining']) {
+      const val = resp.headers.get(key);
+      if (val) quotaHeaders[key] = val;
+    }
+    if (Object.keys(quotaHeaders).length > 0) {
+      console.log('  ORS quota:', JSON.stringify(quotaHeaders));
+    }
+
+    if (!resp.ok) {
+      const body = await resp.text();
+      console.warn(`  ORS ${url} returned ${resp.status}: ${body.substring(0, 200)}`);
+      return null;
+    }
+
+    const data = await resp.json();
+    return { durations: data.durations, distances: data.distances, quotaHeaders };
+  } catch (err) {
+    console.warn(`  ORS ${url} error: ${(err as Error).message}`);
+    return null;
+  }
+}
+
 /**
- * Build the travel matrix using ORS or haversine fallback.
+ * Build the travel matrix.
+ * ONE batched Matrix V2 request for all zone pairs (quota-efficient).
+ * Tries heigit.org first, then legacy ORS, then haversine fallback.
  */
 export async function buildTravelMatrix(
   zones: ZoneCenter[],
@@ -63,64 +113,51 @@ export async function buildTravelMatrix(
 ): Promise<TravelMatrix> {
   const buckets: ('morning' | 'midday' | 'evening')[] = ['morning', 'midday', 'evening'];
   const transfers: TransferTime[] = [];
-  let basis: 'matrix' | 'haversine_estimate' = 'haversine_estimate';
 
   if (orsApiKey) {
-    // ORS duration matrix
-    try {
-      const coords = zones.map((z) => [z.lng, z.lat]); // ORS uses [lng, lat]
-      const resp = await fetch('https://api.openrouteservice.org/v2/matrix/driving-car', {
-        method: 'POST',
-        headers: {
-          'Authorization': orsApiKey,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          locations: coords,
-          metrics: ['duration', 'distance'],
-          units: 'km',
-        }),
-      });
+    const coords = zones.map((z) => [z.lng, z.lat]); // ORS uses [lng, lat]
+    console.log(`  ORS matrix: ${zones.length} zones, ${coords.length}×${coords.length} = 1 API call`);
 
-      if (resp.ok) {
-        const data = await resp.json();
-        basis = 'matrix';
+    // Try primary (heigit.org), then legacy fallback
+    let result = await tryOrsMatrix(ORS_BASE_PRIMARY, orsApiKey, coords);
+    if (!result) {
+      console.log('  Falling back to legacy api.openrouteservice.org...');
+      result = await tryOrsMatrix(ORS_BASE_LEGACY, orsApiKey, coords);
+    }
 
-        for (let i = 0; i < zones.length; i++) {
-          for (let j = 0; j < zones.length; j++) {
-            if (i === j) continue;
-            const baseDurationMin = Math.round(data.durations[i][j] / 60);
-            const distKm = Math.round(data.distances[i][j] * 10) / 10;
+    if (result) {
+      for (let i = 0; i < zones.length; i++) {
+        for (let j = 0; j < zones.length; j++) {
+          if (i === j) continue;
+          const baseDurationMin = Math.round(result.durations[i][j] / 60);
+          const distKm = Math.round(result.distances[i][j] * 10) / 10;
 
-            for (const bucket of buckets) {
-              // Apply traffic factor for destination zone
-              const factor = trafficFactors[zones[j].slug]?.[bucket] ?? 1.0;
-              transfers.push({
-                from_zone: zones[i].slug,
-                to_zone: zones[j].slug,
-                bucket,
-                duration_minutes: Math.round(baseDurationMin * factor),
-                distance_km: distKm,
-                basis: 'matrix',
-                as_of: new Date().toISOString(),
-              });
-            }
+          for (const bucket of buckets) {
+            const factor = trafficFactors[zones[j].slug]?.[bucket] ?? 1.0;
+            transfers.push({
+              from_zone: zones[i].slug,
+              to_zone: zones[j].slug,
+              bucket,
+              duration_minutes: Math.round(baseDurationMin * factor),
+              distance_km: distKm,
+              basis: 'routed',
+              as_of: new Date().toISOString(),
+            });
           }
         }
-
-        return {
-          destination: 'phuket',
-          zones: zones.map((z) => z.slug),
-          buckets,
-          transfers,
-          basis,
-          as_of: new Date().toISOString(),
-        };
       }
-      console.warn('ORS matrix request failed, falling back to haversine');
-    } catch (err) {
-      console.warn('ORS unavailable, falling back to haversine:', (err as Error).message);
+
+      return {
+        destination: 'phuket',
+        zones: zones.map((z) => z.slug),
+        buckets,
+        transfers,
+        basis: 'routed',
+        as_of: new Date().toISOString(),
+      };
     }
+
+    console.warn('  Both ORS endpoints failed, falling back to haversine');
   }
 
   // Haversine fallback
@@ -149,7 +186,7 @@ export async function buildTravelMatrix(
     zones: zones.map((z) => z.slug),
     buckets,
     transfers,
-    basis,
+    basis: 'haversine_estimate',
     as_of: new Date().toISOString(),
   };
 }
