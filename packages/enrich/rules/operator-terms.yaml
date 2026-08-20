@@ -1,0 +1,38 @@
+# operator_terms: per-product or per-operator overrides from verified T&C.
+# Source: "operator_terms" — highest precedence after human corrections.
+# Evidence must cite the specific T&C or communication.
+
+# ── HYPE Yacht (both listings) ──
+- products:
+    - exp_5636312P7   # Hype Yacht VIP Tour Phi Phi
+    - exp_5636312P12  # Hype Yacht VIP tour Krabi & Phang Nga
+    - exp_5636312P13
+    - exp_5636312P15
+    - exp_5636312P17
+    - exp_5636312P18
+    - exp_5636312P20
+    - exp_5636312P24
+    - exp_5636312P25
+    - exp_5636312P26
+    - exp_5636312P27
+  rules:
+    - attribute: pregnant_ok
+      value: true
+      confidence: 0.9
+      note: "HYPE Yacht T&C: pregnant guests months 2–6 accepted with medical certificate; water sports excluded"
+    - attribute: non_swimmer_ok
+      value: true
+      confidence: 0.9
+      note: "HYPE Yacht T&C: notify crew, life jackets provided"
+    - attribute: independent_from
+      value: 18
+      confidence: 0.9
+      note: "HYPE Yacht T&C: minimum age 18 for independent booking"
+    - attribute: wheelchair_access
+      value: unknown
+      confidence: 0.7
+      note: "HYPE Yacht: boarding via tender — confirm at booking"
+    - attribute: confirm_at_booking
+      value: true
+      confidence: 0.95
+      note: "HYPE Yacht T&C: accessibility and medical conditions must be declared at booking"

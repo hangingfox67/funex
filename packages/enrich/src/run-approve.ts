@@ -14,19 +14,26 @@ async function main() {
     process.exit(1);
   }
 
-  console.log(`Approving batch: ${batchId}`);
-  const { applied, skipped, unconfirmed, corrected, danRulesApplied, textualConflicts } = await approveBatch(batchId);
-  console.log(`Done. ${applied} attributes applied, ${skipped} skipped (null).`);
-  console.log(`  ${corrected} human-corrected, ${danRulesApplied} dan-rules applied, ${unconfirmed} unconfirmed.`);
+  console.log(`Approving batch: ${batchId}\n`);
+  const r = await approveBatch(batchId);
 
-  if (textualConflicts.length > 0) {
-    console.log(`\n  ⚠ ${textualConflicts.length} TEXTUAL CONFLICT(S) — extraction value kept, rule NOT applied:`);
-    for (const c of textualConflicts) {
-      console.log(`    ${c.experienceId}.${c.attribute}: extracted=${JSON.stringify(c.extractedValue)} vs rule=${JSON.stringify(c.ruleValue)}`);
-      console.log(`      evidence: ${c.extractedEvidence.substring(0, 120)}`);
-      console.log(`      rule: ${c.ruleNote}`);
+  console.log(`\nDone. ${r.applied} attributes applied, ${r.skipped} skipped (null).`);
+  console.log(`  Sources: ${r.viatorStructuredApplied} viator_structured, ${r.danRulesApplied} dan-rules, ${r.operatorTermsApplied} operator_terms, ${r.derivedApplied} derived`);
+  console.log(`  ${r.corrected} human-corrected, ${r.unconfirmed} unconfirmed.`);
+
+  if (r.textualConflicts.length > 0) {
+    console.log(`\n  ⚠ ${r.textualConflicts.length} TEXTUAL CONFLICT(S) — extraction value kept:`);
+    for (const c of r.textualConflicts) {
+      console.log(`    ${c.experienceId}.${c.attribute}: extracted=${JSON.stringify(c.extractedValue)} vs ${c.ruleSource}=${JSON.stringify(c.ruleValue)}`);
     }
-    console.log(`\n  Resolve these manually in corrections-${batchId}.yaml`);
+    console.log(`\n  Resolve in corrections-${batchId}.yaml`);
+  }
+
+  if (r.declaredVsRuleConflicts.length > 0) {
+    console.log(`\n  ⚠ ${r.declaredVsRuleConflicts.length} DECLARED-VS-RULE CONFLICT(S) — declared value wins:`);
+    for (const c of r.declaredVsRuleConflicts) {
+      console.log(`    ${c.experienceId}.${c.attribute}: ${c.declaredSource}=${JSON.stringify(c.declared)} vs ${c.ruleSource}=${JSON.stringify(c.rule)}`);
+    }
   }
 
   await client.end();
