@@ -1,0 +1,177 @@
+[
+  {
+    "id": "p01",
+    "name": "Active Family Kata Rain",
+    "description": "Family, kids 9+15, Kata, rain after 3pm, high energy",
+    "request": { "stayingZone": "kata", "date": "2026-08-20", "youngestAge": 9, "energy": "high", "timeBucket": "morning" },
+    "expect": { "minCandidates": 3, "mustIncludeCategory": null, "mustExcludeReason": null }
+  },
+  {
+    "id": "p02",
+    "name": "Elderly Couple Bang Tao",
+    "description": "Couple 60s, Bang Tao, limited walking, calm day",
+    "request": { "stayingZone": "bang_tao", "date": "2026-08-20", "maxMobility": "limited", "energy": "low" },
+    "expect": { "minCandidates": 2, "mustNotHaveMobility": "full" }
+  },
+  {
+    "id": "p03",
+    "name": "Solo Adrenaline Budget",
+    "description": "Solo 28, Patong, adrenaline, budget 2500 THB",
+    "request": { "stayingZone": "patong", "date": "2026-08-20", "energy": "high", "budgetCents": 250000 },
+    "expect": { "minCandidates": 1 }
+  },
+  {
+    "id": "p04",
+    "name": "Toddler Grandmother Panwa",
+    "description": "Family, toddler + grandmother, Panwa, non-swimmers",
+    "request": { "stayingZone": "panwa", "date": "2026-08-20", "youngestAge": 2, "maxMobility": "limited", "requireNonSwimmerOk": true },
+    "expect": { "minCandidates": 1, "noSwimRequired": true }
+  },
+  {
+    "id": "p05",
+    "name": "Teens Different Today",
+    "description": "Teens did kayaking yesterday, want different today",
+    "request": { "stayingZone": "kata", "date": "2026-08-20", "youngestAge": 13, "pastActivityIds": ["exp_kayak_1"], "energy": "high" },
+    "expect": { "minCandidates": 3 }
+  },
+  {
+    "id": "p06",
+    "name": "Honeymoon Rough Sea",
+    "description": "Honeymoon couple, sunset, sea state rough — what instead?",
+    "request": { "stayingZone": "kata", "date": "2026-08-20", "energy": "low", "timeBucket": "evening" },
+    "expect": { "minCandidates": 2, "shouldPreferSheltered": true }
+  },
+  {
+    "id": "p07",
+    "name": "Half Day Airport",
+    "description": "Half-day only, flight at 21:00, near airport end of island",
+    "request": { "stayingZone": "airport", "date": "2026-08-20", "maxDurationMinutes": 240, "maxTransferMinutes": 45 },
+    "expect": { "minCandidates": 1 }
+  },
+  {
+    "id": "p08",
+    "name": "Culture No Boats",
+    "description": "Four adults, cooking + culture, no boats",
+    "request": { "stayingZone": "old_town", "date": "2026-08-20", "energy": "moderate" },
+    "expect": { "minCandidates": 2 }
+  },
+  {
+    "id": "p09",
+    "name": "Family Budget Final Day",
+    "description": "Family of 5, budget 12000 THB total, one day left",
+    "request": { "stayingZone": "patong", "date": "2026-08-20", "youngestAge": 5, "budgetCents": 240000 },
+    "expect": { "minCandidates": 2 }
+  },
+  {
+    "id": "p10",
+    "name": "Rainy Teens Nothing Touristy",
+    "description": "Rainy full day, two teens, nothing touristy",
+    "request": { "stayingZone": "kata", "date": "2026-08-20", "youngestAge": 14, "requireRainViable": true, "energy": "moderate" },
+    "expect": { "minCandidates": 1 }
+  },
+  {
+    "id": "p11",
+    "name": "Wheelchair User Patong",
+    "description": "Adult wheelchair user, Patong, wants evening entertainment",
+    "request": { "stayingZone": "patong", "date": "2026-08-20", "maxMobility": "limited", "timeBucket": "evening" },
+    "expect": { "minCandidates": 1, "mustNotHaveMobility": "full" }
+  },
+  {
+    "id": "p12",
+    "name": "Pregnant Couple Relaxing",
+    "description": "Pregnant woman + partner, want relaxing day, no extreme activities",
+    "request": { "stayingZone": "bang_tao", "date": "2026-08-20", "requirePregnantOk": true, "energy": "low" },
+    "expect": { "minCandidates": 2, "allPregnantOk": true }
+  },
+  {
+    "id": "p13",
+    "name": "Senior Solo Snorkeling Question",
+    "description": "Solo 65, wants to try snorkeling but nervous swimmer",
+    "request": { "stayingZone": "karon", "date": "2026-08-20", "youngestAge": 65, "requireNonSwimmerOk": true, "energy": "low" },
+    "expect": { "minCandidates": 1 }
+  },
+  {
+    "id": "p14",
+    "name": "Large Group Adventure",
+    "description": "8 friends, 25-30, want full day adventure",
+    "request": { "stayingZone": "patong", "date": "2026-08-20", "energy": "high", "youngestAge": 25 },
+    "expect": { "minCandidates": 5 }
+  },
+  {
+    "id": "p15",
+    "name": "Family Mixed Ages",
+    "description": "Parents, kid 4, grandparent 70, Kata",
+    "request": { "stayingZone": "kata", "date": "2026-08-20", "youngestAge": 4, "maxMobility": "moderate" },
+    "expect": { "minCandidates": 2 }
+  },
+  {
+    "id": "p16",
+    "name": "Tonight Only Patong",
+    "description": "Looking for something tonight, Patong",
+    "request": { "stayingZone": "patong", "date": "2026-08-20", "timeBucket": "evening", "maxDurationMinutes": 180 },
+    "expect": { "minCandidates": 1 }
+  },
+  {
+    "id": "p17",
+    "name": "Luxury No Budget",
+    "description": "Couple, luxury experience, no budget constraint",
+    "request": { "stayingZone": "bang_tao", "date": "2026-08-20", "energy": "moderate" },
+    "expect": { "minCandidates": 5 }
+  },
+  {
+    "id": "p18",
+    "name": "Diving Enthusiast",
+    "description": "Certified diver, wants advanced diving",
+    "request": { "stayingZone": "kata", "date": "2026-08-20", "energy": "high", "youngestAge": 18 },
+    "expect": { "minCandidates": 3 }
+  },
+  {
+    "id": "p19",
+    "name": "West Swell Active",
+    "description": "West coast swell today — should prefer sheltered activities",
+    "request": { "stayingZone": "kata", "date": "2026-08-20", "energy": "moderate" },
+    "expect": { "shouldPreferSheltered": true }
+  },
+  {
+    "id": "p20",
+    "name": "Food Tour Old Town",
+    "description": "Couple, food lovers, staying Old Town",
+    "request": { "stayingZone": "old_town", "date": "2026-08-20", "energy": "moderate" },
+    "expect": { "minCandidates": 2 }
+  },
+  {
+    "id": "p21",
+    "name": "Family Sunrise Activity",
+    "description": "Family with teens, want early morning activity",
+    "request": { "stayingZone": "kata", "date": "2026-08-20", "youngestAge": 12, "timeBucket": "morning", "energy": "high" },
+    "expect": { "minCandidates": 3 }
+  },
+  {
+    "id": "p22",
+    "name": "Non Swimmer Couple Boat",
+    "description": "Couple, both non-swimmers, want a boat experience",
+    "request": { "stayingZone": "patong", "date": "2026-08-20", "requireNonSwimmerOk": true, "energy": "moderate" },
+    "expect": { "minCandidates": 1, "noSwimRequired": true }
+  },
+  {
+    "id": "p23",
+    "name": "Backpacker Cheapest",
+    "description": "Solo backpacker, 500 THB max, anything",
+    "request": { "stayingZone": "patong", "date": "2026-08-20", "budgetCents": 50000, "energy": "moderate" },
+    "expect": { "minCandidates": 0 }
+  },
+  {
+    "id": "p24",
+    "name": "Family With Baby",
+    "description": "Family with 6-month baby, need gentle activities",
+    "request": { "stayingZone": "kata", "date": "2026-08-20", "youngestAge": 0, "maxMobility": "limited", "energy": "low" },
+    "expect": { "minCandidates": 1 }
+  },
+  {
+    "id": "p25",
+    "name": "Birthday Celebration",
+    "description": "Group of 6, birthday celebration, want something special",
+    "request": { "stayingZone": "bang_tao", "date": "2026-08-20", "energy": "moderate", "youngestAge": 21 },
+    "expect": { "minCandidates": 3 }
+  }
+]

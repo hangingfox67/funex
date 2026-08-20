@@ -107,6 +107,22 @@ importers:
         specifier: ^5.6.0
         version: 5.9.3
 
+  packages/rank:
+    dependencies:
+      '@funex/context':
+        specifier: workspace:*
+        version: link:../context
+      '@funex/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+    devDependencies:
+      '@funex/graph':
+        specifier: workspace:*
+        version: link:../graph
+      typescript:
+        specifier: ^5.6.0
+        version: 5.9.3
+
   packages/router:
     dependencies:
       '@funex/graph':

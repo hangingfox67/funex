@@ -1,0 +1,20 @@
+{
+  "name": "@funex/rank",
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "lint:imports": "node -e \"const fs=require('fs');const src=fs.readFileSync('src/rank.ts','utf-8')+fs.readFileSync('src/filters.ts','utf-8')+fs.readFileSync('src/tiers.ts','utf-8')+fs.readFileSync('src/index.ts','utf-8');const bad=['@funex/router','@funex/connectors','./router','./redirect'];for(const b of bad){if(src.includes(b)){console.error('DIRECTIVE 8 VIOLATION: rank imports '+b);process.exit(1)}}console.log('Directive 8 OK: rank imports nothing from router/connectors')\""
+  },
+  "dependencies": {
+    "@funex/contracts": "workspace:*",
+    "@funex/context": "workspace:*"
+  },
+  "devDependencies": {
+    "@funex/graph": "workspace:*",
+    "typescript": "^5.6.0"
+  }
+}
