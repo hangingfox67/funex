@@ -17,6 +17,8 @@ These are the rules that keep V1 simple and V2 possible. Every module below obey
 5. **Log everything, claimably.** Every anonymous interaction hangs off a session ID that a future authenticated profile can absorb.
 6. **Compute is labor, so meter it.** Every pipeline records token + API spend per destination. Destination P&L = spend vs. affiliate revenue.
 7. **Ungated doors first.** The web/GEO surface ships before and independently of any reviewed app directory.
+8. **Directive 8 is code, not culture.** The rank package is blind to rails — lint-enforced, CI fails otherwise.
+9. **Viator-tomorrow test.** Build nothing whose value is re-displaying a single provider's fields. Value must come from transformation, corroboration, composition, or context they can't serve. If Viator could ship the same feature by adding a column, it's not defensible.
 
 ---
 
