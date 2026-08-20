@@ -14,12 +14,33 @@ describe('Rail router (A2)', () => {
         { provider: 'viator', payoutModel: 'affiliate', rate: 0.08 },
         '12345P1',
         's_test-session-123',
+        'exp_170728P24',
       );
       expect(result.url).toContain('sid=s_test-session-123');
       expect(result.url).toContain('12345P1');
       expect(result.provider).toBe('viator');
       expect(result.payoutModel).toBe('affiliate');
       expect(result.rate).toBe(0.08);
+    });
+
+    it('includes campaign=sessionId in the URL', () => {
+      const result = buildBookingUrl(
+        { provider: 'viator', payoutModel: 'affiliate', rate: 0.08 },
+        '12345P1',
+        's_campaign-test',
+        'exp_170728P24',
+      );
+      expect(result.url).toContain('campaign=s_campaign-test');
+    });
+
+    it('includes redirectUrl with sessionId and experienceId', () => {
+      const result = buildBookingUrl(
+        { provider: 'viator', payoutModel: 'affiliate', rate: 0.08 },
+        '12345P1',
+        's_test-session-123',
+        'exp_170728P24',
+      );
+      expect(result.redirectUrl).toBe('/r/s_test-session-123/exp_170728P24');
     });
   });
 
@@ -44,6 +65,7 @@ describe('Rail router (A2)', () => {
       expect(result!.url).toContain('sid=s_router-test');
       expect(result!.url).toContain('viator.com');
       expect(result!.provider).toBe('viator');
+      expect(result!.redirectUrl).toBe(`/r/s_router-test/${expId}`);
     });
 
     it('returns null for a nonexistent experience', async () => {
@@ -70,6 +92,7 @@ describe('Rail router (A2)', () => {
       const result = await routeExperience(expId, 's_real-test', db);
       expect(result).not.toBeNull();
       expect(result!.url).toContain('sid=s_real-test');
+      expect(result!.redirectUrl).toBe(`/r/s_real-test/${expId}`);
     });
 
     it('isFixture correctly classifies IDs', () => {

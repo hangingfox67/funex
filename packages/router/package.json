@@ -7,7 +7,9 @@
   },
   "dependencies": {
     "@funex/graph": "workspace:*",
-    "drizzle-orm": "^0.45.2"
+    "@funex/telemetry": "workspace:*",
+    "drizzle-orm": "^0.45.2",
+    "fastify": "^5.2.0"
   },
   "devDependencies": {
     "typescript": "^5.6.0"

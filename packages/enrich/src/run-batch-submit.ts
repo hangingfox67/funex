@@ -23,7 +23,17 @@ const CALIBRATION_REAL = [
 
 async function main() {
   const args = process.argv.slice(2).filter((a) => a !== '--');
-  const ids = args.length > 0 ? args.filter((a) => a.startsWith('exp_')) : CALIBRATION_REAL;
+
+  // Support --ids-file=<path> for large batches
+  const idsFileArg = args.find((a) => a.startsWith('--ids-file='));
+  let ids: string[];
+  if (idsFileArg) {
+    const idsPath = idsFileArg.split('=')[1];
+    ids = readFileSync(idsPath, 'utf-8').trim().split('\n').filter((l) => l.startsWith('exp_'));
+  } else {
+    ids = args.length > 0 ? args.filter((a) => a.startsWith('exp_')) : CALIBRATION_REAL;
+  }
+
   const batchId = args.find((a) => a.startsWith('--batch-id='))?.split('=')[1]
     ?? `cal-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}`;
 

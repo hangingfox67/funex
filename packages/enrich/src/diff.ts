@@ -35,7 +35,7 @@ export function writeDiff(
   lines.push('| Experience | Input tok | Output tok | Cost USD |');
   lines.push('|---|---|---|---|');
   for (const c of metadata.perProductCosts) {
-    lines.push(`| ${c.experienceId} | ${c.inputTokens} | ${c.outputTokens} | $${c.costUsd.toFixed(4)} |`);
+    lines.push(`| ${c.experienceId} | ${c.inputTokens ?? 0} | ${c.outputTokens ?? 0} | $${(c.costUsd ?? 0).toFixed(4)} |`);
   }
   lines.push('');
 
@@ -46,7 +46,7 @@ export function writeDiff(
       if (
         attr.risk_class === 'safety' &&
         attr.inference_basis === 'textual' &&
-        attr.confidence >= 0.9 &&
+        (attr.confidence ?? 0) >= 0.9 &&
         attr.value !== null
       ) {
         alerts.push({
@@ -154,19 +154,19 @@ export function writeDiff(
       lines.push('|---|---|---|---|---|---|');
       for (const [key, attr] of safetyAttrs) {
         const val = attr.value === null ? '_N/A_' : JSON.stringify(attr.value);
-        const conf = attr.confidence.toFixed(2);
+        const conf = (attr.confidence ?? 0).toFixed(2);
         const basis = attr.inference_basis ?? 'structural';
         let gate: string;
         if (attr.value === null) {
           gate = '—';
         } else if (basis === 'unverified') {
           gate = '**UNVERIFIED**';
-        } else if (basis === 'structural' && attr.confidence >= 0.9) {
+        } else if (basis === 'structural' && (attr.confidence ?? 0) >= 0.9) {
           gate = 'PASS';
         } else {
           gate = '**UNCONFIRMED**';
         }
-        const evidence = attr.evidence.replace(/\|/g, '\\|');
+        const evidence = (attr.evidence ?? '').replace(/\|/g, '\\|');
         lines.push(`| ${key} | ${val} | ${conf} | ${basis} | ${gate} | ${evidence} |`);
       }
       lines.push('');
@@ -179,9 +179,9 @@ export function writeDiff(
       lines.push('|---|---|---|---|---|');
       for (const [key, attr] of infoAttrs) {
         const val = attr.value === null ? '_N/A_' : JSON.stringify(attr.value);
-        const conf = attr.confidence.toFixed(2);
+        const conf = (attr.confidence ?? 0).toFixed(2);
         const basis = attr.inference_basis ?? 'structural';
-        const evidence = attr.evidence.replace(/\|/g, '\\|');
+        const evidence = (attr.evidence ?? '').replace(/\|/g, '\\|');
         lines.push(`| ${key} | ${val} | ${conf} | ${basis} | ${evidence} |`);
       }
       lines.push('');

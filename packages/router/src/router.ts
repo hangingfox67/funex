@@ -3,6 +3,7 @@ import { rails, providerMappings, db as defaultDb, isFixture } from '@funex/grap
 
 export interface BookingUrlResult {
   url: string;
+  redirectUrl: string;
   provider: string;
   payoutModel: string;
   rate: number;
@@ -16,11 +17,14 @@ export function buildBookingUrl(
   rail: { provider: string; payoutModel: string; rate: number },
   providerProductId: string,
   sessionId: string,
+  experienceId: string,
 ): BookingUrlResult {
-  // V1: Viator affiliate deep link
-  const url = `https://www.viator.com/tours/Phuket/${providerProductId}?sid=${sessionId}&pid=P00000000`;
+  // V1: Viator affiliate deep link with campaign=sid for attribution
+  const url = `https://www.viator.com/tours/Phuket/${providerProductId}?sid=${sessionId}&pid=P00000000&campaign=${sessionId}`;
+  const redirectUrl = `/r/${sessionId}/${experienceId}`;
   return {
     url,
+    redirectUrl,
     provider: rail.provider,
     payoutModel: rail.payoutModel,
     rate: rail.rate,
@@ -65,5 +69,5 @@ export async function routeExperience(
 
   if (mappings.length === 0) return null;
 
-  return buildBookingUrl(bestRail, mappings[0].providerProductId, sessionId);
+  return buildBookingUrl(bestRail, mappings[0].providerProductId, sessionId, experienceId);
 }

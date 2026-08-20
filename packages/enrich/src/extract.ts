@@ -385,6 +385,11 @@ export function parseAndValidateResponse(
   if (sourceText) {
     for (const [key, attr] of Object.entries(attributes)) {
       if (attr.inference_basis !== 'textual') continue;
+      // Null values assert absence — no span to verify. Reclassify as structural.
+      if (attr.value === null) {
+        attr.inference_basis = 'structural';
+        continue;
+      }
 
       const normalize = (s: string) =>
         s.toLowerCase()

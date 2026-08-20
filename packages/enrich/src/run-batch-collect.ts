@@ -4,7 +4,7 @@ import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 config({ path: resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '.env'), override: true });
 
-import { readFileSync, writeFileSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync } from 'fs';
 import Anthropic from '@anthropic-ai/sdk';
 import { client as pgClient, db, experiences } from '@funex/graph';
 import { eq } from 'drizzle-orm';
@@ -43,6 +43,19 @@ async function main() {
     process.exit(1);
   }
 
+  // ── Idempotent: merge with existing results if re-running ──
+  const jsonPath = resolve(diffDir, `${batchId}.json`);
+  const existingResults = new Map<string, ExtractionResult>();
+  if (existsSync(jsonPath)) {
+    try {
+      const prev = JSON.parse(readFileSync(jsonPath, 'utf-8')) as { results: ExtractionResult[] };
+      for (const r of prev.results) {
+        existingResults.set(r.experienceId, r);
+      }
+      console.log(`Idempotent mode: ${existingResults.size} existing results will be preserved/overwritten.\n`);
+    } catch { /* fresh collect */ }
+  }
+
   const anthropic = new Anthropic();
 
   // Check status first
@@ -58,16 +71,19 @@ async function main() {
   console.log(`Collecting results for batch "${batchId}" (${batch.id})...`);
   console.log(`  Succeeded: ${batch.request_counts.succeeded}`);
   console.log(`  Errored:   ${batch.request_counts.errored}`);
+  console.log(`  Canceled:  ${batch.request_counts.canceled}`);
   console.log(`  Expired:   ${batch.request_counts.expired}`);
   console.log('');
 
   // Stream results
   const decoder = await anthropic.messages.batches.results(tracking.apiBatchId);
-  const results: ExtractionResult[] = [];
+  const newResults = new Map<string, ExtractionResult>();
   const perProductCosts: BatchMetadata['perProductCosts'] = [];
   let totalInputTokens = 0;
   let totalOutputTokens = 0;
   let totalCostUsd = 0;
+  let erroredCount = 0;
+  let parseFailCount = 0;
 
   for await (const entry of decoder) {
     const expId = entry.custom_id;
@@ -77,10 +93,23 @@ async function main() {
       if (entry.result.type === 'errored') {
         console.error(`    Error: ${JSON.stringify(entry.result.error)}`);
       }
+      erroredCount++;
       continue;
     }
 
     const message = entry.result.message;
+
+    // Null-guard usage
+    const inputTokens = message.usage?.input_tokens ?? 0;
+    const outputTokens = message.usage?.output_tokens ?? 0;
+    const costUsd = inputTokens * INPUT_COST_PER_TOKEN + outputTokens * OUTPUT_COST_PER_TOKEN;
+
+    // Always count cost even if parse fails
+    totalInputTokens += inputTokens;
+    totalOutputTokens += outputTokens;
+    totalCostUsd += costUsd;
+    perProductCosts.push({ experienceId: expId, inputTokens, outputTokens, costUsd });
+
     const text = message.content
       .filter((b): b is Anthropic.TextBlock => b.type === 'text')
       .map((b) => b.text)
@@ -94,22 +123,21 @@ async function main() {
     try {
       const attributes = parseAndValidateResponse(expId, text, sourceText);
 
-      const inputTokens = message.usage.input_tokens;
-      const outputTokens = message.usage.output_tokens;
-      const costUsd = inputTokens * INPUT_COST_PER_TOKEN + outputTokens * OUTPUT_COST_PER_TOKEN;
-
-      results.push({ experienceId: expId, title, attributes, usage: { inputTokens, outputTokens }, costUsd });
-      perProductCosts.push({ experienceId: expId, inputTokens, outputTokens, costUsd });
-      totalInputTokens += inputTokens;
-      totalOutputTokens += outputTokens;
-      totalCostUsd += costUsd;
-
       const attrCount = Object.keys(attributes).length;
       console.log(`  ${expId}: ${attrCount} attrs, ${inputTokens}/${outputTokens} tok, $${costUsd.toFixed(4)}`);
+
+      newResults.set(expId, { experienceId: expId, title, attributes, usage: { inputTokens, outputTokens }, costUsd });
     } catch (err) {
-      console.error(`  ${expId}: parse/validation failed — ${(err as Error).message}`);
+      console.error(`  ${expId}: parse/validation failed — ${(err as Error).message.substring(0, 200)}`);
+      parseFailCount++;
     }
   }
+
+  // Merge: new results overwrite existing (upsert by exp_id)
+  for (const [id, result] of newResults) {
+    existingResults.set(id, result);
+  }
+  const mergedResults = Array.from(existingResults.values());
 
   const metadata: BatchMetadata = {
     promptVersion: EXTRACT_PROMPT_VERSION,
@@ -123,31 +151,34 @@ async function main() {
     perProductCosts,
   };
 
-  const diffPath = writeDiff(results, metadata, batchId);
+  const diffPath = writeDiff(mergedResults, metadata, batchId);
 
   // Write calibration cost constant for spend gate
-  if (results.length > 0) {
-    const costPerItem = totalCostUsd / results.length;
+  if (newResults.size > 0) {
+    const costPerItem = totalCostUsd / (newResults.size + erroredCount + parseFailCount);
     const calibrationPath = resolve(diffDir, 'calibration-cost.json');
     writeFileSync(calibrationPath, JSON.stringify({
       costPerItem,
       measuredFrom: batchId,
       measuredAt: new Date().toISOString(),
-      sampleSize: results.length,
+      sampleSize: newResults.size,
       totalCostUsd,
       model: EXTRACT_MODEL,
       promptVersion: EXTRACT_PROMPT_VERSION,
     }, null, 2), 'utf-8');
-    console.log(`\nCalibration cost updated: $${costPerItem.toFixed(4)}/item (from ${results.length} products)`);
+    console.log(`\nCalibration cost updated: $${costPerItem.toFixed(4)}/item (from ${newResults.size} products)`);
   }
 
   console.log(`\nBatch collected.`);
-  console.log(`  Products: ${results.length}/${tracking.productIds.length}`);
+  console.log(`  Succeeded (parsed): ${newResults.size}`);
+  console.log(`  Errored/expired:    ${erroredCount}`);
+  console.log(`  Parse failures:     ${parseFailCount}`);
+  console.log(`  Total in diff:      ${mergedResults.length} (including prior runs)`);
   console.log(`  Total tokens: ${totalInputTokens} in / ${totalOutputTokens} out`);
   console.log(`  Total cost: $${totalCostUsd.toFixed(4)} USD`);
-  console.log(`  Avg cost/product: $${results.length > 0 ? (totalCostUsd / results.length).toFixed(4) : '0.0000'} USD`);
+  console.log(`  Avg cost/product: $${newResults.size > 0 ? (totalCostUsd / newResults.size).toFixed(4) : '0.0000'} USD`);
   console.log(`\nDiff written to: ${diffPath}`);
-  if (results.length > 0) {
+  if (mergedResults.length > 0) {
     console.log(`Review it, then run: pnpm enrich:approve ${batchId}`);
   }
 
