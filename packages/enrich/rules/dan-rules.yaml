@@ -1,12 +1,32 @@
 # Dan-rules: category/venue-level correction rules
 # Source: "operator-local knowledge"
 # Applied during corroboration to ALL products matching the selector.
-# These override extraction values — they represent ground truth Dan has
-# verified from local knowledge, operator conversations, or on-site visits.
+# These override structural-basis extraction values. Textual-basis conflicts
+# are flagged for human review, never auto-resolved.
+#
+# PRECEDENCE (enforced by engine, not YAML order):
+#   1. title_contains rules beat category_contains rules
+#   2. Among same type, more-specific selector (more match terms) wins
+#   3. Ties resolved by YAML order (later wins)
+#
+# AUTHORING GATE (enforced by review, not code):
+#   Any rule flipping a safety attribute in the PERMISSIVE direction
+#   (false→true, "no"→"yes", higher→lower risk) MUST list its full
+#   match set for Dan's review at creation time. Restrictive flips
+#   (true→false, adding risk) stay silent.
+#
+# EXCLUSIONS: title_exclude prevents a rule from matching products
+# whose title contains any of the listed strings, even if the main
+# selector matches.
 
-# ── Boat tours: universal rules ──
+# ── 1. Boat tours (vessel-passenger only, NOT personal watercraft) ──
 - selector:
     category_contains: [boat, cruise, island, snorkeling, speedboat, catamaran]
+    title_exclude: [jet ski, jetski, waverunner, wave runner]
+  # PERMISSIVE FLIP REVIEW (non_swimmer_ok false→true):
+  #   Verified match set excludes jet ski/jetski/waverunner.
+  #   Remaining matches are vessel-passenger tours where snorkeling/swimming
+  #   is optional and life jackets are provided.
   rules:
     - attribute: non_swimmer_ok
       value: true
@@ -17,7 +37,7 @@
       confidence: 0.9
       note: "Thai boat tours routinely take babies with life vests"
 
-# ── Phang Nga Bay: sheltered water ──
+# ── 2. Phang Nga Bay: sheltered water ──
 - selector:
     title_contains: [Phang Nga]
   rules:
@@ -30,7 +50,7 @@
       confidence: 0.9
       note: "Sheltered bay, minimal swell except rare northerlies"
 
-# ── Phi Phi / open sea crossings ──
+# ── 3. Phi Phi / Similan: open sea crossings ──
 - selector:
     title_contains: [Phi Phi, Similan]
   rules:
@@ -39,7 +59,7 @@
       confidence: 0.95
       note: "Andaman Sea crossing required — genuinely open water"
 
-# ── Temple / sightseeing tours ──
+# ── 4. Temple / sightseeing tours ──
 - selector:
     category_contains: [temple, sightseeing, city tour, cultural]
     title_contains: [Big Buddha, Wat Chalong, Old Town]
@@ -49,9 +69,12 @@
       confidence: 0.9
       note: "Temples welcome all ages"
 
-# ── Cooking classes ──
+# ── 5. Cooking classes ──
 - selector:
     category_contains: [cooking]
+  # PERMISSIVE FLIP REVIEW (pregnant_ok false→true):
+  #   6 products: Blue Elephant (×3), Big Mom, Thalang, Wat Chalong combo.
+  #   All are kitchen-based with seating available.
   rules:
     - attribute: pregnant_ok
       value: true
@@ -62,22 +85,25 @@
       confidence: 0.85
       note: "Parental judgment; kitchen supervision, not a hard floor"
 
-# ── Elephant sanctuaries ──
-# "Blue Elephant" is a cooking school — exclude via negative match in the engine.
-# Match only when category is wildlife or title contains "Sanctuary"/"Elephant Care".
+# ── 6. Elephant sanctuaries ──
 - selector:
     title_contains: [Elephant Sanctuary, Elephant Nature, Elephant Jungle, Elephant Watch]
+  # PERMISSIVE FLIP REVIEW (non_swimmer_ok false→true):
+  #   3 products: Elephant Sanctuary Small Group, Full-Day Elephant Sanctuary,
+  #   Guided Cultural Sightseeing with Elephant Watching. All land-based.
   rules:
     - attribute: non_swimmer_ok
       value: true
       confidence: 0.95
       note: "No deep water involvement at ethical sanctuaries"
 
-# ── Spa / massage ──
-# Match category OR title containing "Massage"/"Spa" but NOT "Golf" (resort name false positive).
+# ── 7. Spa / massage ──
 - selector:
     category_contains: [massage]
     title_contains: [Massage, Spa Retreat, Spa Package, Spa Buffet, Kee Spa, Reiki]
+  # PERMISSIVE FLIP REVIEW (pregnant_ok false→true):
+  #   3 products: 3-Hour Spa Buffet, Couples Spa Retreat, Andaman Sunshine.
+  #   Soft oil massage safe with therapist informed. Deep Thai stretching excluded.
   rules:
     - attribute: mobility
       value: limited
@@ -88,7 +114,7 @@
       confidence: 0.85
       note: "Soft oil massage safe; must inform therapist. Deep Thai stretching contraindicated."
 
-# ── Shows / cabaret ──
+# ── 8. Shows / cabaret ──
 - selector:
     title_contains: [Simon Cabaret, Cabaret]
   rules:

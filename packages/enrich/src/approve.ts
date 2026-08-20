@@ -76,17 +76,20 @@ export async function approveBatch(
   let unconfirmed = 0;
   let corrected = 0;
 
-  // ── Dan-rules: build per-product rule map ──
+  // ── Dan-rules: build per-product rule map with precedence ──
   const danRuleMap = new Map<string, Map<string, { value: unknown; confidence: number; note: string }>>();
   let danRulesApplied = 0;
   for (const result of results) {
-    const rules = applyDanRules(result.title, result.attributes.group_type ? 'activity' : 'activity');
-    if (rules.length > 0) {
+    const { applied: ruleApps, overrideLog } = applyDanRules(result.title, result.attributes.group_type ? 'activity' : 'activity');
+    if (ruleApps.length > 0) {
       const attrMap = new Map<string, { value: unknown; confidence: number; note: string }>();
-      for (const r of rules) {
+      for (const r of ruleApps) {
         attrMap.set(r.attribute, { value: r.value, confidence: r.confidence, note: r.note });
       }
       danRuleMap.set(result.experienceId, attrMap);
+    }
+    for (const log of overrideLog) {
+      console.log(`  RULE PRECEDENCE (${result.experienceId}): ${log}`);
     }
   }
 
