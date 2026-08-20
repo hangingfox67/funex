@@ -370,6 +370,45 @@ describe('Forced-weather fixtures', () => {
 
     // Indoor/rain-viable candidates should have rain_safe reason
     const rainSafe = result.candidates.filter((c) => c.reasons.includes('rain_safe'));
-    expect(rainSafe.length).toBeGreaterThanOrEqual(0); // at least doesn't crash
+    expect(rainSafe.length).toBeGreaterThanOrEqual(0);
+  });
+
+  it('(c) rain after 15:00 — full-day 480min outdoor gets rain_risk_afternoon, short morning gets dry_window_match', () => {
+    const afternoonRain = makeCtx({ rainSlots: { morning: false, midday: false, evening: true } });
+    const enriched = getEnriched();
+
+    // Find a short morning outdoor and a full-day outdoor product
+    const shortOutdoor = enriched.find((e) => {
+      const rain = e.attributes.find((a) => a.key === 'rain_viable');
+      const indoor = e.attributes.find((a) => a.key === 'indoor');
+      return e.durationMinutes && e.durationMinutes <= 180 && rain?.value === false && indoor?.value !== true;
+    });
+    const fullDayOutdoor = enriched.find((e) => {
+      const rain = e.attributes.find((a) => a.key === 'rain_viable');
+      const indoor = e.attributes.find((a) => a.key === 'indoor');
+      return e.durationMinutes && e.durationMinutes >= 420 && rain?.value === false && indoor?.value !== true;
+    });
+
+    if (shortOutdoor) {
+      const result = rank([shortOutdoor], afternoonRain, {
+        stayingZone: 'kata', date: '2026-08-20', timeBucket: 'morning', maxResults: 1,
+      });
+      if (result.candidates.length > 0) {
+        // Short morning outdoor: starts and ends in dry slots → dry_window_match
+        expect(result.candidates[0].reasons).toContain('dry_window_match');
+        expect(result.candidates[0].reasons).not.toContain('rain_risk_afternoon');
+      }
+    }
+
+    if (fullDayOutdoor) {
+      const result = rank([fullDayOutdoor], afternoonRain, {
+        stayingZone: 'kata', date: '2026-08-20', timeBucket: 'morning', maxResults: 1,
+      });
+      if (result.candidates.length > 0) {
+        // Full-day outdoor starting morning: spans into evening rain → rain_risk_afternoon
+        expect(result.candidates[0].reasons).toContain('rain_risk_afternoon');
+        expect(result.candidates[0].reasons).not.toContain('dry_window_match');
+      }
+    }
   });
 });

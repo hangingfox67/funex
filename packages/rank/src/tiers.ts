@@ -14,6 +14,33 @@ export interface TierResult {
 
 const MOBILITY_LEVEL = { limited: 0, moderate: 1, full: 2 } as const;
 
+// Slot time ranges for duration-based rain overlap
+const SLOT_HOURS = { morning: { start: 7, end: 11 }, midday: { start: 11, end: 16 }, evening: { start: 16, end: 21 } };
+const SLOT_ORDER: ('morning' | 'midday' | 'evening')[] = ['morning', 'midday', 'evening'];
+
+/** Check which rain slots a product spans, given start slot and duration. */
+function spannedRainSlots(
+  startSlot: 'morning' | 'midday' | 'evening',
+  durationMinutes: number | null,
+  rainSlots: { morning: boolean; midday: boolean; evening: boolean },
+): { spansRainy: boolean; rainySlotNames: string[] } {
+  if (!durationMinutes) return { spansRainy: rainSlots[startSlot], rainySlotNames: rainSlots[startSlot] ? [startSlot] : [] };
+
+  const startHour = SLOT_HOURS[startSlot].start;
+  const endHour = startHour + durationMinutes / 60;
+  const rainySlotNames: string[] = [];
+
+  for (const slot of SLOT_ORDER) {
+    const s = SLOT_HOURS[slot];
+    // Activity overlaps this slot if [startHour, endHour) intersects [s.start, s.end)
+    if (endHour > s.start && startHour < s.end && rainSlots[slot]) {
+      rainySlotNames.push(slot);
+    }
+  }
+
+  return { spansRainy: rainySlotNames.length > 0, rainySlotNames };
+}
+
 export function scoreTier(
   exp: ExperienceRow,
   opts: {
@@ -58,32 +85,39 @@ export function scoreTier(
     // Land-based (water_exposure=none, vessel_type=none): no marine reason codes
   }
 
-  // ── Slot-aware rain fit ──
+  // ── Slot-aware rain fit (duration-aware) ──
   if (opts.rainSlots) {
     const rainOk = val('rain_viable');
     const indoor = val('indoor');
     const isIndoor = rainOk === true || indoor === true;
     const slot = opts.requestSlot ?? 'morning';
-    const slotRainy = opts.rainSlots[slot];
-    const anySlotDry = !opts.rainSlots.morning || !opts.rainSlots.midday || !opts.rainSlots.evening;
-    const allRainy = opts.rainSlots.morning && opts.rainSlots.midday && opts.rainSlots.evening;
-    const isFullDay = !opts.requestSlot; // no specific slot = full day
+    const anyRainy = opts.rainSlots.morning || opts.rainSlots.midday || opts.rainSlots.evening;
 
     if (isIndoor) {
-      // Indoor/rain-viable: always good, bonus when it's raining
-      if (slotRainy || allRainy) { score += 15; reasons.push('rain_safe'); }
-    } else if (isFullDay && slotRainy && anySlotDry) {
-      // Full-day outdoor with partial rain: penalty
-      score -= 10;
-      reasons.push('rain_risk_afternoon');
-    } else if (!slotRainy && anySlotDry) {
-      // Outdoor activity in a dry slot: positive signal
-      score += 5;
-      reasons.push('dry_window_match');
-    } else if (slotRainy) {
-      // Outdoor in a rainy slot
-      score -= 15;
-      reasons.push('rain_risk');
+      if (anyRainy) { score += 15; reasons.push('rain_safe'); }
+    } else {
+      // Check if the activity's duration spans into rainy slots
+      const { spansRainy, rainySlotNames } = spannedRainSlots(
+        slot, exp.durationMinutes, opts.rainSlots,
+      );
+
+      if (spansRainy && rainySlotNames.length > 0) {
+        // Does it also cover dry slots?
+        const startSlotRainy = opts.rainSlots[slot];
+        if (!startSlotRainy) {
+          // Starts dry, extends into rain — partial penalty + note
+          score -= 5;
+          reasons.push('rain_risk_afternoon');
+        } else {
+          // Starts in rain
+          score -= 15;
+          reasons.push('rain_risk');
+        }
+      } else if (!opts.rainSlots[slot]) {
+        // Outdoor, requested slot is dry, duration stays in dry slots
+        score += 5;
+        reasons.push('dry_window_match');
+      }
     }
   }
 

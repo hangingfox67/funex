@@ -262,15 +262,16 @@ export function rank(
     usedActivityTokens.add(primaryActivityToken(best.title));
   }
 
-  // 2. Best from a DIFFERENT category
+  // 2. Best from a DIFFERENT category AND different activity token
   for (const c of deduped) {
     if (portfolio.length >= maxResults) break;
     if (portfolio.some((p) => p.experienceId === c.experienceId)) continue;
-    if (!usedCategories.has(c.category)) {
+    const token = primaryActivityToken(c.title);
+    if (!usedCategories.has(c.category) && !usedActivityTokens.has(token)) {
       c.portfolioRole = 'alternative_category';
       portfolio.push(c);
       usedCategories.add(c.category);
-      usedActivityTokens.add(primaryActivityToken(c.title));
+      usedActivityTokens.add(token);
     }
   }
 
