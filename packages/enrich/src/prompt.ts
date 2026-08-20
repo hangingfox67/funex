@@ -1,4 +1,4 @@
-export const EXTRACT_PROMPT_VERSION = 'v2.0';
+export const EXTRACT_PROMPT_VERSION = 'v2.1';
 export const EXTRACT_MODEL = 'claude-sonnet-4-6';
 
 /** System prompt (cacheable) — ontology + instructions, shared across all batch requests. */
@@ -23,6 +23,8 @@ For each attribute in the ontology, provide:
 ### Basis rules:
 - **"textual"** = value found in or directly supported by specific wording in the product title or description. Evidence MUST contain the verbatim span from the source in single quotes (e.g. evidence: "Title states 'Sunset Cruise'").
 - **"structural"** = value logically entailed by the product type, category, or activity mechanics. Evidence is your analytical reasoning. Use this when the source text does not explicitly address the attribute.
+
+### Evidence length: keep each evidence string under 200 characters. Quote the key span (textual) or state reasoning in one sentence (structural). No paragraphs.
 
 ### Critical attribute rules:
 
@@ -117,6 +119,8 @@ For each attribute in the ontology, provide:
 ### Basis rules:
 - **"textual"** = value found in or directly supported by specific wording in the product title or description. Evidence MUST contain the verbatim span from the source in single quotes (e.g. evidence: "Title states 'Sunset Cruise'").
 - **"structural"** = value logically entailed by the product type, category, or activity mechanics. Evidence is your analytical reasoning. Use this when the source text does not explicitly address the attribute.
+
+### Evidence length: keep each evidence string under 200 characters. Quote the key span (textual) or state reasoning in one sentence (structural). No paragraphs.
 
 ### Critical attribute rules:
 

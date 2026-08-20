@@ -25,6 +25,17 @@ export interface CatalogStats {
   basic: number;
 }
 
+export type ResultQuality = 'enriched' | 'mixed' | 'basic_only';
+
+export interface SearchResult {
+  results: ExperienceRow[];
+  stats: CatalogStats;
+  resultQuality: ResultQuality;
+  resultQualityReason: string | null;
+  excludedUnverifiedCount: number;
+  excludedUnverifiedIds: string[];
+}
+
 /**
  * Query experiences with optional attribute enrichment.
  *
@@ -44,7 +55,7 @@ export async function searchExperiences(opts: {
   limit?: number;
   excludeIds?: string[];
   db?: typeof defaultDb;
-}): Promise<{ results: ExperienceRow[]; stats: CatalogStats }> {
+}): Promise<SearchResult> {
   const db = opts.db ?? defaultDb;
   const limit = opts.limit ?? 50;
 
@@ -136,8 +147,38 @@ export async function searchExperiences(opts: {
 
   // Assemble: enriched first, then basic (excluded if safety filters active)
   const results: ExperienceRow[] = [...enrichedRows];
-  if (!opts.safetyFiltersActive) {
+  let excludedUnverifiedCount = 0;
+  let excludedUnverifiedIds: string[] = [];
+
+  if (opts.safetyFiltersActive) {
+    // Basic products excluded — track them as suppressed demand
+    excludedUnverifiedCount = basicRows.length;
+    excludedUnverifiedIds = basicRows.map((r) => r.id);
+  } else {
     results.push(...basicRows);
+  }
+
+  const finalResults = results.slice(0, limit);
+
+  // Determine result quality
+  const hasEnriched = finalResults.some((r) => r.enrichmentTier === 'enriched');
+  const hasBasic = finalResults.some((r) => r.enrichmentTier === 'basic');
+  let resultQuality: ResultQuality;
+  let resultQualityReason: string | null = null;
+
+  if (hasEnriched && hasBasic) {
+    resultQuality = 'mixed';
+  } else if (hasEnriched) {
+    resultQuality = 'enriched';
+  } else {
+    resultQuality = 'basic_only';
+    if (finalResults.length === 0) {
+      resultQualityReason = 'No matching experiences found.';
+    } else if (opts.safetyFiltersActive) {
+      resultQualityReason = 'No enriched products match this query. Basic results excluded because safety filters are active. Try broadening the search or removing safety constraints.';
+    } else {
+      resultQualityReason = 'No enriched products match this query. Results have title, category, and price only — no safety/suitability attributes available.';
+    }
   }
 
   // Count stats across the full destination (unfiltered)
@@ -155,11 +196,15 @@ export async function searchExperiences(opts: {
   const enriched = Number(statsRows[0]?.enriched ?? 0);
 
   return {
-    results: results.slice(0, limit),
+    results: finalResults,
     stats: {
       totalDestination: total,
       enriched,
       basic: total - enriched,
     },
+    resultQuality,
+    resultQualityReason,
+    excludedUnverifiedCount,
+    excludedUnverifiedIds,
   };
 }

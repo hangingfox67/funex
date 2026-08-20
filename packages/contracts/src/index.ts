@@ -10,6 +10,8 @@ export {
   type SearchRequest,
   CandidateSchema,
   type Candidate,
+  ResultQualitySchema,
+  type ResultQuality,
   SearchResponseSchema,
   type SearchResponse,
   SEARCH_TOOL_DESCRIPTION,

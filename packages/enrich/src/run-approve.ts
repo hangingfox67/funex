@@ -15,9 +15,20 @@ async function main() {
   }
 
   console.log(`Approving batch: ${batchId}`);
-  const { applied, skipped, unconfirmed, corrected, danRulesApplied } = await approveBatch(batchId);
+  const { applied, skipped, unconfirmed, corrected, danRulesApplied, textualConflicts } = await approveBatch(batchId);
   console.log(`Done. ${applied} attributes applied, ${skipped} skipped (null).`);
   console.log(`  ${corrected} human-corrected, ${danRulesApplied} dan-rules applied, ${unconfirmed} unconfirmed.`);
+
+  if (textualConflicts.length > 0) {
+    console.log(`\n  ⚠ ${textualConflicts.length} TEXTUAL CONFLICT(S) — extraction value kept, rule NOT applied:`);
+    for (const c of textualConflicts) {
+      console.log(`    ${c.experienceId}.${c.attribute}: extracted=${JSON.stringify(c.extractedValue)} vs rule=${JSON.stringify(c.ruleValue)}`);
+      console.log(`      evidence: ${c.extractedEvidence.substring(0, 120)}`);
+      console.log(`      rule: ${c.ruleNote}`);
+    }
+    console.log(`\n  Resolve these manually in corrections-${batchId}.yaml`);
+  }
+
   await client.end();
 }
 

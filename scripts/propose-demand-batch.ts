@@ -20,22 +20,28 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const calibrationPath = resolve(__dirname, '..', 'packages', 'enrich', 'diffs', 'calibration-cost.json');
 
 async function main() {
-  // 1. Read demand events from the past 7 days
+  // 1. Read demand events from the past 7 days (both served and suppressed)
   const demandRows = await db.execute(sql`
-    SELECT payload->'experienceIds' AS exp_ids
+    SELECT type, payload->'experienceIds' AS exp_ids
     FROM event
-    WHERE type = 'demand.unenriched'
+    WHERE type IN ('demand.unenriched', 'demand.suppressed')
       AND created_at >= now() - interval '7 days'
   `);
 
   // 2. Count frequency per experience ID
+  // Suppressed demand gets 3× weight — the user got NO result for these
   const freq = new Map<string, number>();
+  let servedEvents = 0;
+  let suppressedEvents = 0;
   for (const row of demandRows) {
     const ids = row.exp_ids as string[];
+    const weight = row.type === 'demand.suppressed' ? 3 : 1;
+    if (row.type === 'demand.suppressed') suppressedEvents++;
+    else servedEvents++;
     if (!Array.isArray(ids)) continue;
     for (const id of ids) {
       if (id.startsWith(FIXTURE_ID_PREFIX)) continue;
-      freq.set(id, (freq.get(id) ?? 0) + 1);
+      freq.set(id, (freq.get(id) ?? 0) + weight);
     }
   }
 
@@ -76,7 +82,7 @@ async function main() {
 
   console.log(`=== Demand-Triggered Enrichment Proposal ===\n`);
   console.log(`  Period:    past 7 days`);
-  console.log(`  Demand events: ${demandRows.length}`);
+  console.log(`  Demand events: ${demandRows.length} (${servedEvents} served, ${suppressedEvents} suppressed×3)`);
   console.log(`  Unique unenriched products demanded: ${unenriched.length}`);
   console.log(`  Already enriched (filtered out): ${freq.size - unenriched.length}`);
   console.log(`  Estimated cost: $${estimatedCost.toFixed(2)} (${unenriched.length} × $${costPerItem.toFixed(4)})`);

@@ -63,11 +63,23 @@ export type Candidate = z.infer<typeof CandidateSchema>;
 
 // ── Search response ──
 
+export const ResultQualitySchema = z.enum(['enriched', 'mixed', 'basic_only']);
+export type ResultQuality = z.infer<typeof ResultQualitySchema>;
+
 export const SearchResponseSchema = z.object({
   sessionId: z.string(),
   candidates: z.array(CandidateSchema),
+  resultQuality: ResultQualitySchema.describe(
+    'enriched = all candidates have safety attributes. mixed = some enriched, some basic. basic_only = no enriched candidates (agent should caveat recommendations).',
+  ),
+  resultQualityReason: z.string().nullable().describe(
+    'When basic_only, explains why and suggests alternatives.',
+  ),
   enrichedCount: z.number().describe('How many candidates are fully enriched'),
   basicCount: z.number().describe('How many candidates are basic (unenriched) fallback'),
+  excludedUnverifiedCount: z.number().describe(
+    'Products that matched the query but were excluded because safety filters are active and they lack enrichment. High numbers signal demand for enriching these products.',
+  ),
   context: z
     .object({
       weather: z.unknown().optional(),

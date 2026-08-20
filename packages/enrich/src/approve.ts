@@ -60,7 +60,7 @@ function loadCorrections(batchId: string): Map<string, Correction> {
 export async function approveBatch(
   batchId: string,
   db: typeof defaultDb = defaultDb,
-): Promise<{ applied: number; skipped: number; unconfirmed: number; corrected: number; danRulesApplied: number }> {
+): Promise<{ applied: number; skipped: number; unconfirmed: number; corrected: number; danRulesApplied: number; textualConflicts: { experienceId: string; attribute: string; extractedValue: unknown; extractedEvidence: string; ruleValue: unknown; ruleNote: string }[] }> {
   const jsonPath = resolve(diffDir, `${batchId}.json`);
   const raw = readFileSync(jsonPath, 'utf-8');
   const { results } = JSON.parse(raw) as {
@@ -72,6 +72,7 @@ export async function approveBatch(
 
   let applied = 0;
   let skipped = 0;
+  const textualConflicts: { experienceId: string; attribute: string; extractedValue: unknown; extractedEvidence: string; ruleValue: unknown; ruleNote: string }[] = [];
   let unconfirmed = 0;
   let corrected = 0;
 
@@ -130,17 +131,41 @@ export async function approveBatch(
         console.log(`  Correction applied: ${correctionKey} → ${JSON.stringify(value)} (${correction.note})`);
       }
 
-      // Apply Dan-rules (corroboration layer — adds evidence, may override value)
+      // Apply Dan-rules (corroboration layer)
+      // Policy: structural-basis extractions overridden silently.
+      //         textual-basis conflicts flagged for human review, never auto-resolved.
       const danRules = danRuleMap.get(result.experienceId);
       if (danRules && danRules.has(key) && !correction) {
         const rule = danRules.get(key)!;
-        value = rule.value;
-        confidence = Math.max(confidence, rule.confidence);
-        evidenceEntries.push({
-          source: 'operator-local-knowledge',
-          pointer: rule.note,
-          inference_basis: 'textual',
-        });
+        const isConflict = JSON.stringify(attr.value) !== JSON.stringify(rule.value);
+
+        if (isConflict && (attr.inference_basis === 'textual')) {
+          // Textual conflict: the LLM found evidence in the text that disagrees with the rule.
+          // Flag for human review — do NOT override.
+          textualConflicts.push({
+            experienceId: result.experienceId,
+            attribute: key,
+            extractedValue: attr.value,
+            extractedEvidence: attr.evidence,
+            ruleValue: rule.value,
+            ruleNote: rule.note,
+          });
+          // Still add rule as corroboration source but keep extracted value
+          evidenceEntries.push({
+            source: 'operator-local-knowledge',
+            pointer: `CONFLICT — rule says ${JSON.stringify(rule.value)}: ${rule.note}`,
+            inference_basis: 'textual',
+          });
+        } else {
+          // Structural or agreeing: override silently
+          value = rule.value;
+          confidence = Math.max(confidence, rule.confidence);
+          evidenceEntries.push({
+            source: 'operator-local-knowledge',
+            pointer: rule.note,
+            inference_basis: 'textual',
+          });
+        }
         danRulesApplied++;
       }
 
@@ -195,5 +220,5 @@ export async function approveBatch(
     'utf-8',
   );
 
-  return { applied, skipped, unconfirmed, corrected, danRulesApplied };
+  return { applied, skipped, unconfirmed, corrected, danRulesApplied, textualConflicts };
 }

@@ -18,7 +18,6 @@ describe('searchExperiences fallback', () => {
     expect(results.length).toBeGreaterThan(0);
 
     const enriched = results.filter((r) => r.enrichmentTier === 'enriched');
-    // At least the 20 calibration products are enriched
     if (enriched.length > 0) {
       expect(enriched[0].attributes.length).toBeGreaterThan(0);
     }
@@ -52,7 +51,7 @@ describe('searchExperiences fallback', () => {
   });
 
   it('excludes basic products when safety filters are active', async () => {
-    const { results } = await searchExperiences({
+    const { results, excludedUnverifiedCount } = await searchExperiences({
       destinationSlug: 'phuket',
       safetyFiltersActive: true,
       limit: 2000,
@@ -62,9 +61,75 @@ describe('searchExperiences fallback', () => {
     const basic = results.filter((r) => r.enrichmentTier === 'basic');
     expect(basic.length).toBe(0);
 
-    // Only enriched products returned
     for (const r of results) {
       expect(r.enrichmentTier).toBe('enriched');
+    }
+
+    // Excluded count should reflect the basic products that were filtered out
+    expect(excludedUnverifiedCount).toBeGreaterThan(0);
+  });
+
+  it('returns excludedUnverifiedIds when safety-filtering', async () => {
+    const { excludedUnverifiedIds, excludedUnverifiedCount } = await searchExperiences({
+      destinationSlug: 'phuket',
+      safetyFiltersActive: true,
+      limit: 2000,
+      db,
+    });
+
+    expect(excludedUnverifiedIds.length).toBe(excludedUnverifiedCount);
+    // None of the excluded IDs should be fixtures
+    for (const id of excludedUnverifiedIds) {
+      expect(id).not.toMatch(/^exp_phuket_/);
+    }
+  });
+
+  it('returns zero excludedUnverifiedCount without safety filters', async () => {
+    const { excludedUnverifiedCount } = await searchExperiences({
+      destinationSlug: 'phuket',
+      safetyFiltersActive: false,
+      limit: 10,
+      db,
+    });
+
+    expect(excludedUnverifiedCount).toBe(0);
+  });
+
+  it('resultQuality reflects mix of tiers', async () => {
+    // Without safety filters, should include both enriched and basic → mixed
+    const mixed = await searchExperiences({
+      destinationSlug: 'phuket',
+      safetyFiltersActive: false,
+      limit: 2000,
+      db,
+    });
+    expect(mixed.resultQuality).toBe('mixed');
+    expect(mixed.resultQualityReason).toBeNull();
+
+    // With safety filters, only enriched
+    const enrichedOnly = await searchExperiences({
+      destinationSlug: 'phuket',
+      safetyFiltersActive: true,
+      limit: 2000,
+      db,
+    });
+    expect(enrichedOnly.resultQuality).toBe('enriched');
+    expect(enrichedOnly.resultQualityReason).toBeNull();
+  });
+
+  it('resultQuality is basic_only with reason when no enriched match', async () => {
+    // Use a category unlikely to have enriched products
+    const result = await searchExperiences({
+      destinationSlug: 'phuket',
+      safetyFiltersActive: false,
+      categories: ['transport'],
+      limit: 10,
+      db,
+    });
+
+    // Transport category likely has no enriched products in calibration set
+    if (result.resultQuality === 'basic_only') {
+      expect(result.resultQualityReason).toBeTruthy();
     }
   });
 
@@ -103,9 +168,8 @@ describe('searchExperiences fallback', () => {
       db,
     });
 
-    // 1,891 real products total
     expect(stats.totalDestination).toBeGreaterThanOrEqual(1800);
-    expect(stats.enriched).toBeGreaterThanOrEqual(20); // at least calibration set
+    expect(stats.enriched).toBeGreaterThanOrEqual(20);
     expect(stats.basic).toBe(stats.totalDestination - stats.enriched);
   });
 });
