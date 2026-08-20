@@ -5,6 +5,7 @@ import { sql } from 'drizzle-orm';
 import { parse as parseYaml } from 'yaml';
 import { db as defaultDb, attributes } from '@funex/graph';
 import type { ExtractionResult, BatchMetadata } from './extract.js';
+import { applyDanRules, checkVenueConsistency } from './dan-rules.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const diffDir = resolve(__dirname, '..', 'diffs');
@@ -59,7 +60,7 @@ function loadCorrections(batchId: string): Map<string, Correction> {
 export async function approveBatch(
   batchId: string,
   db: typeof defaultDb = defaultDb,
-): Promise<{ applied: number; skipped: number; unconfirmed: number; corrected: number }> {
+): Promise<{ applied: number; skipped: number; unconfirmed: number; corrected: number; danRulesApplied: number }> {
   const jsonPath = resolve(diffDir, `${batchId}.json`);
   const raw = readFileSync(jsonPath, 'utf-8');
   const { results } = JSON.parse(raw) as {
@@ -73,6 +74,30 @@ export async function approveBatch(
   let skipped = 0;
   let unconfirmed = 0;
   let corrected = 0;
+
+  // ── Dan-rules: build per-product rule map ──
+  const danRuleMap = new Map<string, Map<string, { value: unknown; confidence: number; note: string }>>();
+  let danRulesApplied = 0;
+  for (const result of results) {
+    const rules = applyDanRules(result.title, result.attributes.group_type ? 'activity' : 'activity');
+    if (rules.length > 0) {
+      const attrMap = new Map<string, { value: unknown; confidence: number; note: string }>();
+      for (const r of rules) {
+        attrMap.set(r.attribute, { value: r.value, confidence: r.confidence, note: r.note });
+      }
+      danRuleMap.set(result.experienceId, attrMap);
+    }
+  }
+
+  // ── Venue consistency check ──
+  const consistencyWarnings = checkVenueConsistency(results);
+  if (consistencyWarnings.length > 0) {
+    console.log(`\n  ── Venue Consistency Warnings ──`);
+    for (const w of consistencyWarnings) {
+      console.warn(`  ${w}`);
+    }
+    console.log('');
+  }
 
   for (const result of results) {
     for (const [key, attr] of Object.entries(result.attributes)) {
@@ -103,6 +128,20 @@ export async function approveBatch(
         });
         corrected++;
         console.log(`  Correction applied: ${correctionKey} → ${JSON.stringify(value)} (${correction.note})`);
+      }
+
+      // Apply Dan-rules (corroboration layer — adds evidence, may override value)
+      const danRules = danRuleMap.get(result.experienceId);
+      if (danRules && danRules.has(key) && !correction) {
+        const rule = danRules.get(key)!;
+        value = rule.value;
+        confidence = Math.max(confidence, rule.confidence);
+        evidenceEntries.push({
+          source: 'operator-local-knowledge',
+          pointer: rule.note,
+          inference_basis: 'textual',
+        });
+        danRulesApplied++;
       }
 
       // Gate check: corrections count as a second source
@@ -151,10 +190,10 @@ export async function approveBatch(
     mdPath,
     md.replace(
       /> \*\*Status:\*\* PENDING APPROVAL.*/,
-      `> **Status:** APPROVED — ${applied} attributes applied (${unconfirmed} unconfirmed, ${corrected} human-corrected), ${skipped} skipped (null). Applied at ${new Date().toISOString()}.`,
+      `> **Status:** APPROVED — ${applied} attributes applied (${unconfirmed} unconfirmed, ${corrected} human-corrected, ${danRulesApplied} dan-rules), ${skipped} skipped (null). Applied at ${new Date().toISOString()}.`,
     ),
     'utf-8',
   );
 
-  return { applied, skipped, unconfirmed, corrected };
+  return { applied, skipped, unconfirmed, corrected, danRulesApplied };
 }

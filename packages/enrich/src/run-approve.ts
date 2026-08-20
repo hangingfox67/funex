@@ -15,8 +15,9 @@ async function main() {
   }
 
   console.log(`Approving batch: ${batchId}`);
-  const { applied, skipped } = await approveBatch(batchId);
-  console.log(`Done. ${applied} attributes applied, ${skipped} skipped (null values).`);
+  const { applied, skipped, unconfirmed, corrected, danRulesApplied } = await approveBatch(batchId);
+  console.log(`Done. ${applied} attributes applied, ${skipped} skipped (null).`);
+  console.log(`  ${corrected} human-corrected, ${danRulesApplied} dan-rules applied, ${unconfirmed} unconfirmed.`);
   await client.end();
 }
 

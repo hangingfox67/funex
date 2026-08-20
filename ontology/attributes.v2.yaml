@@ -36,7 +36,13 @@ attributes:
     type: enum
     values: [full, moderate, limited]
     risk_class: safety
-    description: Required mobility level
+    description: "Mobility floor for CORE enjoyment (not completion of every optional element). limited = seated/flat-surface throughout, a wheelchair user or limited-walking elderly person can enjoy the core experience (e.g. dinner cruise, cabaret show, spa). moderate = some walking/stairs/uneven ground but no sustained athletic demand (e.g. temple tour, market walk, kayak with guide paddling). full = sustained physical exertion is the point (e.g. Muay Thai, zipline, ATV riding)."
+    extraction_rule: "Rate the floor for core enjoyment, not completion. A boat tour where you CAN snorkel but CAN ALSO sit on the boat and enjoy = moderate, not full. A cooking class where you CAN stand but CAN ALSO sit = limited."
+
+  mobility_note:
+    type: string
+    risk_class: info
+    description: "Free-text note clarifying the mobility rating — what specifically requires the stated level, and what partial-participation looks like if applicable."
 
   intensity:
     type: enum
@@ -76,9 +82,9 @@ attributes:
 
   vessel_type:
     type: enum
-    values: [speedboat, longtail, catamaran, yacht, ferry, none]
+    values: [speedboat, longtail, catamaran, yacht, big_boat, none]
     risk_class: info
-    description: Type of boat/vessel used. "none" for land-based activities.
+    description: "Type of boat/vessel used. big_boat = large touring vessel (50+ passengers, covered deck, not a ferry). 'none' for land-based activities."
 
   water_exposure:
     type: enum

@@ -1,0 +1,102 @@
+# Dan-rules: category/venue-level correction rules
+# Source: "operator-local knowledge"
+# Applied during corroboration to ALL products matching the selector.
+# These override extraction values — they represent ground truth Dan has
+# verified from local knowledge, operator conversations, or on-site visits.
+
+# ── Boat tours: universal rules ──
+- selector:
+    category_contains: [boat, cruise, island, snorkeling, speedboat, catamaran]
+  rules:
+    - attribute: non_swimmer_ok
+      value: true
+      confidence: 0.9
+      note: "Life jackets provided on all Phuket boat tours; snorkeling/swimming always optional"
+    - attribute: with_adult_from
+      value: 0
+      confidence: 0.9
+      note: "Thai boat tours routinely take babies with life vests"
+
+# ── Phang Nga Bay: sheltered water ──
+- selector:
+    title_contains: [Phang Nga]
+  rules:
+    - attribute: water_exposure
+      value: sheltered_bay
+      confidence: 0.95
+      note: "Phang Nga is sheltered bay — only exposed to rare northerly swell"
+    - attribute: seasickness_risk
+      value: low
+      confidence: 0.9
+      note: "Sheltered bay, minimal swell except rare northerlies"
+
+# ── Phi Phi / open sea crossings ──
+- selector:
+    title_contains: [Phi Phi, Similan]
+  rules:
+    - attribute: water_exposure
+      value: open_sea
+      confidence: 0.95
+      note: "Andaman Sea crossing required — genuinely open water"
+
+# ── Temple / sightseeing tours ──
+- selector:
+    category_contains: [temple, sightseeing, city tour, cultural]
+    title_contains: [Big Buddha, Wat Chalong, Old Town]
+  rules:
+    - attribute: with_adult_from
+      value: 0
+      confidence: 0.9
+      note: "Temples welcome all ages"
+
+# ── Cooking classes ──
+- selector:
+    category_contains: [cooking]
+  rules:
+    - attribute: pregnant_ok
+      value: true
+      confidence: 0.9
+      note: "Light participation, can sit and observe"
+    - attribute: with_adult_from
+      value: 0
+      confidence: 0.85
+      note: "Parental judgment; kitchen supervision, not a hard floor"
+
+# ── Elephant sanctuaries ──
+- selector:
+    title_contains: [Elephant]
+  rules:
+    - attribute: non_swimmer_ok
+      value: true
+      confidence: 0.95
+      note: "No deep water involvement at ethical sanctuaries"
+
+# ── Spa / massage ──
+- selector:
+    category_contains: [spa, massage]
+  rules:
+    - attribute: mobility
+      value: limited
+      confidence: 0.9
+      note: "Seated/lying throughout — wheelchair transfer to treatment room is the only barrier"
+    - attribute: pregnant_ok
+      value: true
+      confidence: 0.85
+      note: "Soft oil massage safe; must inform therapist. Deep Thai stretching contraindicated."
+
+# ── Shows / cabaret ──
+- selector:
+    title_contains: [Simon Cabaret, Cabaret]
+  rules:
+    - attribute: mobility
+      value: limited
+      confidence: 0.9
+      note: "Seated theater experience"
+    - attribute: wheelchair_access
+      value: unknown
+      confidence: 0.5
+      note: "Likely yes, limited spaces — confirm at booking"
+    - attribute: confirm_at_booking
+      value: true
+      confidence: 0.9
+      note: "Wheelchair spaces must be pre-arranged"

@@ -353,6 +353,34 @@ export function parseAndValidateResponse(
     throw new Error(`Failed to parse extraction response for ${experienceId}:\n${cleaned}`);
   }
 
+  // ── Enum enforcement ──
+  const ENUM_CONSTRAINTS: Record<string, string[]> = {
+    mobility: ['full', 'moderate', 'limited'],
+    intensity: ['low', 'moderate', 'high', 'extreme'],
+    seasickness_risk: ['none', 'low', 'moderate', 'high'],
+    vessel_type: ['speedboat', 'longtail', 'catamaran', 'yacht', 'big_boat', 'none'],
+    water_exposure: ['sheltered_bay', 'coastal', 'open_sea', 'none'],
+    sun_exposure: ['none', 'partial', 'full'],
+    best_time_of_day: ['morning', 'midday', 'evening', 'any'],
+    wheelchair_access: ['yes', 'partial', 'no', 'unknown'],
+    access_constraint: ['vehicle', 'terrain', 'venue', 'none'],
+    advance_booking_needed: ['no', 'recommended', 'required'],
+  };
+
+  for (const [key, allowed] of Object.entries(ENUM_CONSTRAINTS)) {
+    const attr = attributes[key];
+    if (!attr || attr.value === null) continue;
+    if (!allowed.includes(attr.value as string)) {
+      console.warn(
+        `  ENUM VIOLATION: ${experienceId}.${key} = ${JSON.stringify(attr.value)} not in [${allowed.join(', ')}]. Rejecting.`,
+      );
+      attr.value = null;
+      attr.confidence = 0;
+      attr.evidence = `Original value rejected: not in allowed enum. Must re-extract.`;
+      attr.inference_basis = 'unverified';
+    }
+  }
+
   // ── Textual evidence validator ──
   if (sourceText) {
     for (const [key, attr] of Object.entries(attributes)) {
