@@ -36,10 +36,26 @@ export const SearchRequestSchema = z.object({
     .describe('Experience IDs done previously — ranker deprioritizes repeats'),
   energy: z.enum(['low', 'moderate', 'high']).optional()
     .describe('Party energy level — maps to intensity preference'),
+  max_results: z.number().min(1).max(8).optional()
+    .describe('Number of results to return (default 4, max 8). Results are a portfolio, not top-k.'),
+  exclude: z.object({
+    categories: z.array(z.string()).optional(),
+    venues: z.array(z.string()).optional(),
+    exp_ids: z.array(z.string()).optional(),
+  }).optional().describe('Exclusions for conversational follow-up turns'),
+  seen: z.array(z.string()).optional()
+    .describe('Experience IDs already shown — follow-up returns fresh set, zero overlap'),
 });
 export type SearchRequest = z.infer<typeof SearchRequestSchema>;
 
 // ── Search result candidate ──
+
+export const VariantSchema = z.object({
+  experienceId: z.string(),
+  title: z.string(),
+  priceThb: z.number().nullable(),
+  durationMinutes: z.number().nullable(),
+});
 
 export const CandidateSchema = z.object({
   experienceId: z.string(),
@@ -48,16 +64,23 @@ export const CandidateSchema = z.object({
   durationMinutes: z.number().nullable(),
   priceThb: z.number().nullable(),
   enrichmentTier: EnrichmentTier,
+  portfolioRole: z.enum(['best_overall', 'alternative_category', 'wildcard', 'value']).describe(
+    'Why this candidate was selected for the portfolio.',
+  ),
   attributes: z.array(ServedAttributeSchema).describe(
     'Populated for enriched products. Empty array for basic tier.',
   ),
   bookingUrl: z.string().nullable().describe(
     'Redirect URL for click tracking. Null if no active rail.',
   ),
-  tierReason: z.string().optional().describe(
-    'Why this tier was assigned: excellent/good/fair + reason codes',
+  reasons: z.array(z.string()).describe(
+    'Reason codes: sheltered_from_swell, rain_safe, dry_window_match, energy_match, etc.',
   ),
   mobilityNote: z.string().optional(),
+  bookingConstraints: z.array(z.string()).optional(),
+  alternatives: z.array(VariantSchema).describe(
+    'Same-venue variants (different package/duration/price). Agent can mention these.',
+  ),
 });
 export type Candidate = z.infer<typeof CandidateSchema>;
 
@@ -105,10 +128,14 @@ export type SearchResponse = z.infer<typeof SearchResponseSchema>;
 
 // ── Tool description for MCP ──
 
-export const SEARCH_TOOL_DESCRIPTION = `Search Phuket activities for a travel party. Returns ranked candidates from a catalog of ~1,900 real Viator experiences.
+export const SEARCH_TOOL_DESCRIPTION = `Search Phuket activities for a travel party. Returns a portfolio of ~4 diverse recommendations (max 8 via max_results) from ~1,900 real experiences.
 
-**Enriched results** (~320 products) have full safety/suitability attributes (age floors, mobility, seasickness risk, wheelchair access, pregnancy safety, etc.) and are ranked using these attributes.
+**Portfolio, not top-k.** Each response contains one best-overall pick, alternative categories, and a wildcard/value option — all from distinct venues. Same-venue variants (different packages) appear as alternatives[] on each row.
 
-**Basic results** (~1,570 products) have title, category, price, and booking link but NO safety attributes. They appear below enriched results and are EXCLUDED when the query requires safety filtering (e.g. non-swimmer, wheelchair, pregnancy, mobility constraints). Use basic results for broad discovery; use enriched results for decision-complete recommendations.
+**Conversational loop.** Return few, refine on reaction. Use \`seen\` or \`exclude\` to get fresh results on follow-up turns — zero overlap guaranteed. Example: user says "no adventure" → re-query with exclude.categories=["adventure"].
 
-Every result includes a booking URL with click tracking. The response includes catalog breadth numbers so the agent can communicate coverage to the user.`;
+**Enriched results** (~350 products) have safety/suitability attributes (age floors, mobility, seasickness, wheelchair, pregnancy) and are ranked by context fit. **Basic results** (~1,550) have title/category/price only — excluded when safety filters are active.
+
+**Weather-aware.** Rain forecasts are slot-aware (morning/midday/evening). Outdoor activities get dry_window_match or rain_risk based on the requested time slot. Sea state penalizes open-sea activities when swell is moderate/rough.
+
+Every result includes booking URL, reason codes, mobility notes, booking constraints, and same-venue alternatives.`;

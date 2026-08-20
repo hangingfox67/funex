@@ -89,7 +89,7 @@ describe('Ranker (A5)', () => {
       stayingZone: 'kata',
       date: '2026-08-20',
       energy: 'moderate',
-      limit: 50,
+      maxResults: 8,
     });
 
     // If sea state is moderate/rough (SW swell in August hits kata),
@@ -111,6 +111,75 @@ describe('Ranker (A5)', () => {
     }
   });
 
+  // ── Portfolio: persona 1 returns 4 diverse venues ──
+  it('p01 portfolio: 4 diverse venues with reason codes', () => {
+    const result = rank(allExperiences, ctx, {
+      stayingZone: 'kata',
+      date: '2026-08-20',
+      youngestAge: 9,
+      energy: 'high',
+      timeBucket: 'morning',
+      maxResults: 4,
+    });
+
+    expect(result.candidates.length).toBe(4);
+
+    // All 4 must be from different venues
+    const venues = result.candidates.map((c) => c.title.toLowerCase().split(/\s+/).slice(0, 3).join(' '));
+    const uniqueVenues = new Set(venues);
+    expect(uniqueVenues.size).toBe(4);
+
+    // Must have at least 2 different categories
+    const cats = new Set(result.candidates.map((c) => c.category));
+    expect(cats.size).toBeGreaterThanOrEqual(2);
+
+    // best_overall role assigned
+    expect(result.candidates[0].portfolioRole).toBe('best_overall');
+
+    // All have reason codes
+    for (const c of result.candidates) {
+      expect(c.reasons.length).toBeGreaterThan(0);
+    }
+  });
+
+  // ── Follow-up: same persona + exclude adventure → 4 NEW venues, zero overlap ──
+  it('p01 follow-up: exclude adventure → 4 new venues, zero overlap', () => {
+    const first = rank(allExperiences, ctx, {
+      stayingZone: 'kata',
+      date: '2026-08-20',
+      youngestAge: 9,
+      energy: 'high',
+      timeBucket: 'morning',
+      maxResults: 4,
+    });
+
+    const firstIds = first.candidates.map((c) => c.experienceId);
+    const firstVenues = first.candidates.map((c) => c.title);
+
+    const followUp = rank(allExperiences, ctx, {
+      stayingZone: 'kata',
+      date: '2026-08-20',
+      youngestAge: 9,
+      energy: 'high',
+      timeBucket: 'morning',
+      maxResults: 4,
+      exclude: { categories: ['adventure'] },
+      seen: firstIds,
+    });
+
+    expect(followUp.candidates.length).toBe(4);
+
+    // Zero overlap with first set
+    for (const c of followUp.candidates) {
+      expect(firstIds, `${c.experienceId} was in first set`).not.toContain(c.experienceId);
+    }
+
+    // No adventure category
+    for (const c of followUp.candidates) {
+      expect(c.category).not.toBe('adventure');
+    }
+  });
+
   // ── All 25 personas ──
   for (const persona of personas) {
     it(`${persona.id}: ${persona.name}`, () => {
@@ -129,6 +198,7 @@ describe('Ranker (A5)', () => {
         ...persona.request,
         stayingZone: persona.request.stayingZone ?? 'kata',
         date: persona.request.date ?? '2026-08-20',
+        maxResults: 8, // personas test with larger set for coverage
       });
 
       // Min candidates
@@ -180,7 +250,7 @@ describe('Ranker (A5)', () => {
       energy: 'high',
       youngestAge: 9,
       timeBucket: 'morning',
-      limit: 20,
+      maxResults: 8,
     });
 
     for (const c of result.candidates) {
@@ -192,7 +262,7 @@ describe('Ranker (A5)', () => {
       stayingZone: 'kata',
       date: '2026-08-20',
       transportIntent: true,
-      limit: 20,
+      maxResults: 8,
     });
     // Should not filter transport
     const filtered = transportResult.filtered.filter((f) => f.reason === 'logistics_not_activity');
@@ -257,7 +327,7 @@ describe('Forced-weather fixtures', () => {
       date: '2026-08-20',
       energy: 'high',
       timeBucket: 'morning',
-      limit: 50,
+      maxResults: 8,
     });
 
     // Morning zipline should pass (outdoor, but morning is dry)
@@ -290,7 +360,7 @@ describe('Forced-weather fixtures', () => {
     const result = rank(enriched, allDayRain, {
       stayingZone: 'kata',
       date: '2026-08-20',
-      limit: 50,
+      maxResults: 8,
     });
 
     // Outdoor non-rain-viable should be filtered

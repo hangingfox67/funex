@@ -24,10 +24,10 @@ async function main() {
   const safetyActive = !!(persona.request.requireNonSwimmerOk || persona.request.requirePregnantOk || persona.request.maxMobility);
   const { results } = await searchExperiences({ destinationSlug: 'phuket', safetyFiltersActive: safetyActive, limit: 2000, db });
 
-  const result = rank(results, ctx, { ...persona.request, stayingZone: persona.request.stayingZone, date: persona.request.date ?? '2026-08-20', limit: 10 });
+  const result = rank(results, ctx, { ...persona.request, stayingZone: persona.request.stayingZone, date: persona.request.date ?? '2026-08-20', maxResults: 4 });
 
   console.log(`Context: ${ctx.weather.summary} | Sea: ${ctx.seaState.classification} | Season: ${ctx.season.season}`);
-  console.log(`Input: ${result.totalInput} | Filtered: ${result.filtered.length} | Showing: ${result.candidates.length}`);
+  console.log(`Input: ${result.totalInput} | Qualified: ${result.totalQualified} | Filtered: ${result.filtered.length} | Portfolio: ${result.candidates.length}`);
   console.log('');
 
   for (const [i, c] of result.candidates.entries()) {
@@ -35,14 +35,14 @@ async function main() {
     const swim = c.attributes.find(a => a.key === 'non_swimmer_ok')?.value ?? '?';
     const preg = c.attributes.find(a => a.key === 'pregnant_ok')?.value ?? '?';
     const water = c.attributes.find(a => a.key === 'water_exposure')?.value ?? '?';
-    const vessel = c.attributes.find(a => a.key === 'vessel_type')?.value ?? '?';
 
-    console.log(`${String(i + 1).padStart(2)}. [${c.tier.toUpperCase().padEnd(9)}] ${c.title.substring(0, 55)}`);
+    console.log(`${String(i + 1).padStart(2)}. [${c.tier.toUpperCase().padEnd(9)}] [${c.portfolioRole}] ${c.title.substring(0, 50)}`);
     console.log(`    ${c.category} | ${c.priceThb ?? '?'} THB | ${c.durationMinutes ?? '?'} min | score=${c.score}`);
-    console.log(`    mob=${mob} swim=${swim} preg=${preg} water=${water} vessel=${vessel}`);
+    console.log(`    mob=${mob} swim=${swim} preg=${preg} water=${water}`);
     console.log(`    reasons: ${c.reasons.join(', ')}`);
     if (c.mobilityNote) console.log(`    note: ${c.mobilityNote.substring(0, 80)}`);
     if (c.bookingConstraints.length > 0) console.log(`    booking: ${c.bookingConstraints.join('; ').substring(0, 80)}`);
+    if (c.alternatives.length > 0) console.log(`    alts: ${c.alternatives.map(a => a.title.substring(0, 40) + ' (' + (a.priceThb ?? '?') + ' THB)').join('; ')}`);
     console.log('');
   }
 

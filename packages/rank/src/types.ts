@@ -1,7 +1,6 @@
 /**
  * Types for the ranker. Deliberately avoids importing from router/connectors.
- * Uses the same shapes as graph's ExperienceRow but declared locally to
- * enforce Directive 8.
+ * Directive 8 enforced.
  */
 
 export interface RankAttribute {
@@ -23,6 +22,14 @@ export interface ExperienceRow {
   attributes: RankAttribute[];
 }
 
+/** A variant is a same-venue alternative (e.g. different duration/package). */
+export interface VariantRef {
+  experienceId: string;
+  title: string;
+  priceThb: number | null;
+  durationMinutes: number | null;
+}
+
 export interface RankedCandidate {
   experienceId: string;
   title: string;
@@ -33,8 +40,10 @@ export interface RankedCandidate {
   tier: 'excellent' | 'good' | 'fair';
   score: number;
   reasons: string[];
+  portfolioRole: 'best_overall' | 'alternative_category' | 'wildcard' | 'value';
   attributes: RankAttribute[];
   mobilityNote: string | null;
   bookingConstraints: string[];
   transferMinutes: number | null;
+  alternatives: VariantRef[];
 }
