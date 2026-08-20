@@ -89,6 +89,18 @@ zones:
           - [98.295, 8.125]
           - [98.295, 8.095]
 
+# exposed_to: swell directions each zone faces.
+# Used to join with marine forecast swell_direction → per-zone sea state.
+# Degrees: 0=N, 90=E, 180=S, 270=W. Range ±45° from center.
+exposed_to:
+  kata:     { direction: 240, label: "SW (Andaman)" }     # west coast, faces SW monsoon swell
+  karon:    { direction: 240, label: "SW (Andaman)" }
+  patong:   { direction: 270, label: "W (Andaman)" }       # faces due west
+  bang_tao: { direction: 280, label: "WNW (Andaman)" }     # faces WNW
+  panwa:    { direction: 135, label: "SE (sheltered)" }     # east side, sheltered from monsoon
+  old_town: { direction: 90,  label: "E (sheltered)" }      # east side, inner harbor
+  airport:  { direction: 0,   label: "N (no coast)" }       # inland, not wave-relevant
+
 env_variables: [weather, marine]
 
 season:
