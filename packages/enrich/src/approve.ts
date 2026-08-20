@@ -60,6 +60,59 @@ function loadCorrections(batchId: string): Map<string, Correction> {
   return map;
 }
 
+// ── Confidence policies ──
+// Every attribute row MUST have a non-null confidence. Policy by source:
+//   - verbatim declared (viator.*): 1.0 (it's what the supplier said)
+//   - derived (seasickness formula): min of input confidences
+//   - *_note companion: inherits parent attribute's confidence
+//   - operator_terms / dan-rules: uses the rule's declared confidence
+//   - extraction: uses the LLM's confidence (fallback 0.5 if missing)
+
+const NOTE_SUFFIX = '_note';
+const NOTE_PARENTS: Record<string, string> = {
+  mobility_note: 'mobility',
+  booking_age_note: 'stated_min_age',
+};
+
+function resolveConfidence(
+  key: string,
+  rawConfidence: number | null | undefined,
+  allAttrs: Record<string, { confidence?: number | null }>,
+): number {
+  // Already valid
+  if (rawConfidence != null && !isNaN(rawConfidence)) return rawConfidence;
+
+  // Note-type: inherit parent
+  const parent = NOTE_PARENTS[key] ?? (key.endsWith(NOTE_SUFFIX) ? key.slice(0, -NOTE_SUFFIX.length) : null);
+  if (parent && allAttrs[parent]?.confidence != null) {
+    return allAttrs[parent].confidence!;
+  }
+
+  // Verbatim viator fields
+  if (key.startsWith('viator.')) return 1.0;
+
+  // Fallback
+  return 0.5;
+}
+
+interface WriteRow {
+  experienceId: string;
+  key: string;
+  value: string;  // JSON-stringified
+  confidence: number;
+  evidence: { source: string; pointer: string }[];
+  riskClass: string;
+}
+
+function validateRow(row: WriteRow): string | null {
+  if (!row.experienceId) return `missing experienceId`;
+  if (!row.key) return `missing key`;
+  if (row.confidence == null || isNaN(row.confidence)) return `${row.experienceId}.${row.key}: null confidence`;
+  if (!row.riskClass) return `${row.experienceId}.${row.key}: missing riskClass`;
+  if (row.value === undefined) return `${row.experienceId}.${row.key}: undefined value`;
+  return null;
+}
+
 export interface ApprovalResult {
   applied: number;
   skipped: number;
@@ -124,7 +177,9 @@ export async function approveBatch(
     console.log('');
   }
 
-  // ── Process each attribute ──
+  // ── Collect all writes, validate, then flush ──
+  const pendingWrites: WriteRow[] = [];
+  const validationErrors: string[] = [];
 
   for (const result of results) {
     const productCode = expToProduct.get(result.experienceId);
@@ -144,25 +199,12 @@ export async function approveBatch(
     if (productCode) {
       const verbatim = getVerbatimEntries(productCode);
       for (const v of verbatim) {
-        await db
-          .insert(attributes)
-          .values({
-            experienceId: result.experienceId,
-            key: v.key,
-            value: JSON.stringify(v.value),
-            confidence: v.confidence,
-            evidence: [{ source: v.source, pointer: v.evidence }] as { source: string; pointer: string }[],
-            riskClass: 'info',
-          })
-          .onConflictDoUpdate({
-            target: [attributes.experienceId, attributes.key],
-            set: {
-              value: sql`EXCLUDED.value`,
-              confidence: sql`EXCLUDED.confidence`,
-              evidence: sql`EXCLUDED.evidence`,
-              updatedAt: sql`now()`,
-            },
-          });
+        pendingWrites.push({
+          experienceId: result.experienceId, key: v.key,
+          value: JSON.stringify(v.value), confidence: 1.0, // verbatim declared = 1.0
+          evidence: [{ source: v.source, pointer: v.evidence }] as { source: string; pointer: string }[],
+          riskClass: 'info',
+        });
       }
     }
 
@@ -294,26 +336,18 @@ export async function approveBatch(
           : undefined;
       }
 
-      await db
-        .insert(attributes)
-        .values({
-          experienceId: result.experienceId,
-          key,
-          value: JSON.stringify(value),
-          confidence,
-          evidence: evidenceEntries as { source: string; pointer: string }[],
-          riskClass: attr.risk_class,
-        })
-        .onConflictDoUpdate({
-          target: [attributes.experienceId, attributes.key],
-          set: {
-            value: sql`EXCLUDED.value`,
-            confidence: sql`EXCLUDED.confidence`,
-            evidence: sql`EXCLUDED.evidence`,
-            riskClass: sql`EXCLUDED.risk_class`,
-            updatedAt: sql`now()`,
-          },
-        });
+      // Apply confidence policy
+      confidence = resolveConfidence(key, confidence, result.attributes);
+
+      const row: WriteRow = {
+        experienceId: result.experienceId, key,
+        value: JSON.stringify(value), confidence,
+        evidence: evidenceEntries as { source: string; pointer: string }[],
+        riskClass: attr.risk_class,
+      };
+      const err = validateRow(row);
+      if (err) { validationErrors.push(err); continue; }
+      pendingWrites.push(row);
 
       stats.applied++;
     }
@@ -327,25 +361,16 @@ export async function approveBatch(
 
     for (const extra of injected) {
       const pointer = 'evidence' in extra ? (extra as { evidence: string }).evidence : ('note' in extra ? (extra as { note: string }).note : '');
-      await db
-        .insert(attributes)
-        .values({
-          experienceId: result.experienceId,
-          key: extra.attribute,
-          value: JSON.stringify(extra.value),
-          confidence: extra.confidence,
-          evidence: [{ source: extra.source, pointer }] as { source: string; pointer: string }[],
-          riskClass: 'info',
-        })
-        .onConflictDoUpdate({
-          target: [attributes.experienceId, attributes.key],
-          set: {
-            value: sql`EXCLUDED.value`,
-            confidence: sql`EXCLUDED.confidence`,
-            evidence: sql`EXCLUDED.evidence`,
-            updatedAt: sql`now()`,
-          },
-        });
+      const injConf = resolveConfidence(extra.attribute, extra.confidence, result.attributes);
+      const row: WriteRow = {
+        experienceId: result.experienceId, key: extra.attribute,
+        value: JSON.stringify(extra.value), confidence: injConf,
+        evidence: [{ source: extra.source, pointer }] as { source: string; pointer: string }[],
+        riskClass: 'info',
+      };
+      const err = validateRow(row);
+      if (err) { validationErrors.push(err); continue; }
+      pendingWrites.push(row);
       stats.applied++;
     }
   }
@@ -357,15 +382,40 @@ export async function approveBatch(
   ];
 
   for (const ruling of danRulings) {
+    const row: WriteRow = {
+      experienceId: ruling.expId, key: ruling.attr,
+      value: JSON.stringify(ruling.value), confidence: 0.95,
+      evidence: [{ source: 'human_correction', pointer: ruling.note }] as { source: string; pointer: string }[],
+      riskClass: 'safety',
+    };
+    const err = validateRow(row);
+    if (err) { validationErrors.push(err); continue; }
+    pendingWrites.push(row);
+    console.log(`  Dan ruling: ${ruling.expId}.${ruling.attr} → ${JSON.stringify(ruling.value)} (${ruling.note})`);
+    stats.corrected++;
+  }
+
+  // ── Pre-write validation gate ──
+  if (validationErrors.length > 0) {
+    console.error(`\n  ✗ VALIDATION FAILED — ${validationErrors.length} invalid rows:`);
+    for (const e of validationErrors.slice(0, 20)) console.error(`    ${e}`);
+    if (validationErrors.length > 20) console.error(`    ... and ${validationErrors.length - 20} more`);
+    console.error(`\n  Fix the data source and re-run. No rows written.`);
+    return stats;
+  }
+
+  // ── Flush all writes ──
+  console.log(`\n  Writing ${pendingWrites.length} attribute rows...`);
+  for (const row of pendingWrites) {
     await db
       .insert(attributes)
       .values({
-        experienceId: ruling.expId,
-        key: ruling.attr,
-        value: JSON.stringify(ruling.value),
-        confidence: 0.95,
-        evidence: [{ source: 'human_correction', pointer: ruling.note }] as { source: string; pointer: string }[],
-        riskClass: 'safety',
+        experienceId: row.experienceId,
+        key: row.key,
+        value: row.value,
+        confidence: row.confidence,
+        evidence: row.evidence,
+        riskClass: row.riskClass,
       })
       .onConflictDoUpdate({
         target: [attributes.experienceId, attributes.key],
@@ -373,12 +423,12 @@ export async function approveBatch(
           value: sql`EXCLUDED.value`,
           confidence: sql`EXCLUDED.confidence`,
           evidence: sql`EXCLUDED.evidence`,
+          riskClass: sql`EXCLUDED.risk_class`,
           updatedAt: sql`now()`,
         },
       });
-    console.log(`  Dan ruling: ${ruling.expId}.${ruling.attr} → ${JSON.stringify(ruling.value)} (${ruling.note})`);
-    stats.corrected++;
   }
+  console.log(`  Done. ${pendingWrites.length} rows written.`);
 
   // Mark diff as approved
   const mdPath = resolve(diffDir, `${batchId}.md`);
