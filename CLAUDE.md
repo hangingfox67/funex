@@ -100,8 +100,9 @@ Generate 25 into `/fixtures/personas/`, covering the facet grid: party shapes (t
 
 1. **No babysitting.** Anything expected to run >5 min uses (a) a server-side Batch API job, or (b) a detached local process (`nohup`/`systemd-run`, memory-capped) writing progress to a log. Submit, print how to check, END TURN. `sleep`/`tail` polling loops are forbidden.
 2. **Heartbeat files.** Every long job writes a heartbeat (items done, tokens, cost) to a status file (e.g. `diffs/<batch>.batch.json`). Status commands read files, never watch processes.
-3. **Spend gate.** Before ANY batch submission, print estimated cost (`items × measured $/item`). Estimated cost > $5 requires Dan's explicit go in that conversation. The measured calibration cost (from the first successful batch) is the estimator constant.
+3. **Spend gate.** Before ANY batch submission, print estimated cost (`items × measured $/item`). Estimated cost > $5 requires Dan's explicit go in that conversation. The measured calibration cost (from the first successful batch) is the estimator constant. Collection is read-only and free — auto-collect completed batches and proceed to the next non-spending step without waiting for a signal. Only SUBMISSION is spend-gated.
 4. **`pnpm ops:health`.** One command printing RAM/swap, disk, docker status, node version, and any pending batch states. This is the answer to "what is happening" from any bare shell.
+5. **Truncation policy.** Batch outputs hitting `max_tokens` are detected (parse failure on otherwise valid JSON), auto-retried once at 2× tokens, and the working ceiling becomes the new default. Never store truncated extractions. Current ceiling: `4096` (calibrated from v2 ontology at 24 attrs/product).
 
 ## Out of scope — do not build even if idle
 

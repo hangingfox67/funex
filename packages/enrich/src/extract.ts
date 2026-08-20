@@ -136,7 +136,7 @@ export async function extractOne(
 
   const response = await client.messages.create({
     model: EXTRACT_MODEL,
-    max_tokens: 2048,
+    max_tokens: 4096,
     messages: [{ role: 'user', content: prompt }],
   });
 

@@ -53,7 +53,7 @@ async function main() {
         custom_id: expId,
         params: {
           model: EXTRACT_MODEL,
-          max_tokens: 2048,
+          max_tokens: 4096,
           system: [
             {
               type: 'text',
