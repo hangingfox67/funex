@@ -1,0 +1,21 @@
+[Unit]
+Description=Funex MCP Server
+After=network.target docker.service
+Wants=docker.service
+
+[Service]
+Type=simple
+User=daniel
+WorkingDirectory=/home/daniel/funex
+Environment=NODE_OPTIONS=--max-old-space-size=512
+Environment=NVM_DIR=/home/daniel/.nvm
+ExecStart=/bin/bash -c 'source $NVM_DIR/nvm.sh && pnpm --filter @funex/mcp run start'
+Restart=on-failure
+RestartSec=5
+MemoryMax=768M
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=funex-mcp
+
+[Install]
+WantedBy=multi-user.target
