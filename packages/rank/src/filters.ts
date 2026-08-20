@@ -28,7 +28,10 @@ export interface FilterContext {
   requestSlot?: 'morning' | 'midday' | 'evening';
 
   // Intent
-  activityIntent?: boolean; // true = exclude pure-logistics categories
+  activityIntent?: boolean;
+
+  // Exclusions — activity_tags catch combos ("no ziplines" excludes ATV+zipline combos)
+  excludeActivityTags?: Set<string>;
 
   // Past
   excludeIds?: Set<string>;
@@ -47,6 +50,18 @@ export function applyHardFilters(exp: ExperienceRow, ctx: FilterContext): string
   // Intent gate: transport excluded from activity-intent queries
   if (ctx.activityIntent && LOGISTICS_CATEGORIES.has(exp.category)) {
     return 'logistics_not_activity';
+  }
+
+  // Activity tag exclusion: catches combos (e.g. "no ziplines" excludes ATV+zipline)
+  if (ctx.excludeActivityTags && ctx.excludeActivityTags.size > 0) {
+    const tags = exp.attributes.find((a) => a.key === 'activity_tags');
+    if (tags && Array.isArray(tags.value)) {
+      for (const tag of tags.value as string[]) {
+        if (ctx.excludeActivityTags.has(tag)) {
+          return `excluded_tag:${tag}`;
+        }
+      }
+    }
   }
 
   // Budget

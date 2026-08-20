@@ -31,8 +31,9 @@ export interface RankRequest {
   // Exclusions for conversational follow-up
   exclude?: {
     categories?: string[];
-    venues?: string[];  // venue keys to exclude
+    venues?: string[];
     expIds?: string[];
+    activityTags?: string[]; // e.g. ["zipline"] excludes all combos containing zipline
   };
   seen?: string[]; // experience IDs already shown — equivalent to exclude.expIds
 }
@@ -121,6 +122,7 @@ export function rank(
     rainSlots,
     requestSlot: request.timeBucket,
     activityIntent: !request.transportIntent,
+    excludeActivityTags: request.exclude?.activityTags ? new Set(request.exclude.activityTags) : undefined,
     excludeIds,
   };
 
@@ -229,9 +231,27 @@ export function rank(
   const deduped = [...venueWinners.values()];
 
   // ── Portfolio assembly ──
-  // Roles: best_overall, alternative_category, wildcard/value
+  // Roles: best_overall, alternative_category, wildcard/value.
+  // Wildcard must differ on ACTIVITY TYPE from slots 1-2 (no shared primary
+  // activity tokens). This prevents "3 zipline variants in different packaging".
+
+  /** Extract primary activity token from title for diversity check. */
+  function primaryActivityToken(title: string): string {
+    const t = title.toLowerCase();
+    const tokens = ['zipline', 'hanuman', 'atv', 'snorkel', 'kayak', 'canoe', 'dive',
+      'jet ski', 'jetski', 'cooking', 'temple', 'elephant', 'massage', 'spa',
+      'waterpark', 'water park', 'splash', 'andamanda', 'cabaret', 'museum',
+      'aquarium', 'escape room', 'trampoline', 'muay thai', 'surf', 'golf',
+      'yacht', 'catamaran', 'cruise', 'helicopter'];
+    for (const tok of tokens) {
+      if (t.includes(tok)) return tok;
+    }
+    return t.split(/\s+/).slice(0, 2).join('_');
+  }
+
   const portfolio: RankedCandidate[] = [];
   const usedCategories = new Set<string>();
+  const usedActivityTokens = new Set<string>();
 
   // 1. Best overall
   if (deduped.length > 0) {
@@ -239,9 +259,10 @@ export function rank(
     best.portfolioRole = 'best_overall';
     portfolio.push(best);
     usedCategories.add(best.category);
+    usedActivityTokens.add(primaryActivityToken(best.title));
   }
 
-  // 2. Best from a DIFFERENT category (alternative_category)
+  // 2. Best from a DIFFERENT category
   for (const c of deduped) {
     if (portfolio.length >= maxResults) break;
     if (portfolio.some((p) => p.experienceId === c.experienceId)) continue;
@@ -249,29 +270,33 @@ export function rank(
       c.portfolioRole = 'alternative_category';
       portfolio.push(c);
       usedCategories.add(c.category);
+      usedActivityTokens.add(primaryActivityToken(c.title));
     }
   }
 
-  // 3. Wildcard: best remaining from any category not yet used, or value pick
+  // 3. Wildcard/value: must differ on activity type from existing slots
   for (const c of deduped) {
     if (portfolio.length >= maxResults) break;
     if (portfolio.some((p) => p.experienceId === c.experienceId)) continue;
 
-    // Value pick: significantly cheaper than the best overall
+    const token = primaryActivityToken(c.title);
+    const isNewActivity = !usedActivityTokens.has(token);
     const bestPrice = portfolio[0]?.priceThb;
-    const isValue = bestPrice && c.priceThb && c.priceThb < bestPrice * 0.6;
+    const isValue = bestPrice && c.priceThb && c.priceThb < bestPrice * 0.5;
 
-    if (!usedCategories.has(c.category)) {
-      c.portfolioRole = 'alternative_category';
+    if (isNewActivity) {
+      c.portfolioRole = isValue ? 'value' : 'wildcard';
       portfolio.push(c);
-      usedCategories.add(c.category);
-    } else if (isValue) {
-      c.portfolioRole = 'value';
-      portfolio.push(c);
-    } else {
-      c.portfolioRole = 'wildcard';
-      portfolio.push(c);
+      usedActivityTokens.add(token);
     }
+  }
+
+  // Backfill if we still haven't reached maxResults
+  for (const c of deduped) {
+    if (portfolio.length >= maxResults) break;
+    if (portfolio.some((p) => p.experienceId === c.experienceId)) continue;
+    c.portfolioRole = 'wildcard';
+    portfolio.push(c);
   }
 
   return {

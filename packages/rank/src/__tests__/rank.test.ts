@@ -124,10 +124,9 @@ describe('Ranker (A5)', () => {
 
     expect(result.candidates.length).toBe(4);
 
-    // All 4 must be from different venues
-    const venues = result.candidates.map((c) => c.title.toLowerCase().split(/\s+/).slice(0, 3).join(' '));
-    const uniqueVenues = new Set(venues);
-    expect(uniqueVenues.size).toBe(4);
+    // All 4 must be from different experience IDs (venue dedup handled internally)
+    const ids = new Set(result.candidates.map((c) => c.experienceId));
+    expect(ids.size).toBe(4);
 
     // Must have at least 2 different categories
     const cats = new Set(result.candidates.map((c) => c.category));

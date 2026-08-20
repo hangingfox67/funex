@@ -38,16 +38,24 @@ export function scoreTier(
   const evidence = (k: string) => attrs.get(k)?.evidence ?? [];
 
   // ── Sea state fit ──
+  // Only applies to marine activities (vessel_type≠none OR water_exposure≠none).
+  // Land-based products get no marine bonus or penalty.
   if (opts.seaClassification === 'rough' || opts.seaClassification === 'moderate') {
     const waterExp = val('water_exposure') as string | undefined;
-    const isRough = opts.seaClassification === 'rough';
-    if (waterExp === 'open_sea') {
-      score -= isRough ? 30 : 15;
-      reasons.push('sea_state_risk');
-    } else if (waterExp === 'sheltered_bay' || waterExp === 'none') {
-      score += 10;
-      reasons.push('sheltered_from_swell');
+    const vesselType = val('vessel_type') as string | undefined;
+    const isMarineActivity = (waterExp && waterExp !== 'none') || (vesselType && vesselType !== 'none');
+
+    if (isMarineActivity) {
+      const isRough = opts.seaClassification === 'rough';
+      if (waterExp === 'open_sea') {
+        score -= isRough ? 30 : 15;
+        reasons.push('sea_state_risk');
+      } else if (waterExp === 'sheltered_bay') {
+        score += 10;
+        reasons.push('sheltered_from_swell');
+      }
     }
+    // Land-based (water_exposure=none, vessel_type=none): no marine reason codes
   }
 
   // ── Slot-aware rain fit ──
