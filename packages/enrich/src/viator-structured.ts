@@ -50,7 +50,7 @@ export interface InfluenceEntry {
   value: unknown;
   confidence: number;
   evidence: string;
-  direction: 'raise_only' | 'direct_map' | 'declared_blanket';
+  direction: 'raise_only' | 'direct_map' | 'declared_blanket' | 'corroborate';
   source: 'viator_structured';
 }
 
@@ -170,6 +170,23 @@ export function deriveInfluences(
         source: 'viator_structured',
       });
     }
+  } else if (types.has('PHYSICAL_EASY') || types.has('PHYSICAL_MEDIUM')) {
+    // ────────────────────────────────────────────────────
+    // Rule: PHYSICAL_EASY/MEDIUM → corroborate existing mobility.
+    // Rationale: exertion level ≠ capability floor. A PHYSICAL_EASY
+    // cruise needing stairs to board is still moderate mobility.
+    // Record the supplier's assessment as corroborating evidence
+    // and bump confidence, but never change the value.
+    // ────────────────────────────────────────────────────
+    const flag = types.has('PHYSICAL_EASY') ? 'PHYSICAL_EASY' : 'PHYSICAL_MEDIUM';
+    influences.push({
+      attribute: 'mobility',
+      value: currentAttrs.mobility ?? 'moderate', // keep current value
+      confidence: 0.1, // bump amount (added to existing, not absolute)
+      evidence: `Viator declares ${flag}. Corroborating evidence for extraction's mobility assessment.`,
+      direction: 'corroborate',
+      source: 'viator_structured',
+    });
   }
 
   // ────────────────────────────────────────────────────
@@ -272,11 +289,40 @@ export function deriveInfluences(
         source: 'viator_structured',
       });
     } else if (lowestAge > 0) {
+      // ────────────────────────────────────────────────────
+      // Cross-field consistency: bookable band floor → stated_min_age
+      // AND with_adult_from raised to at least that floor.
+      // This is a booking constraint ("children under N cannot be
+      // booked"), not a safety judgment.
+      // ────────────────────────────────────────────────────
       influences.push({
         attribute: 'stated_min_age',
         value: lowestAge,
         confidence: 0.8,
-        evidence: `Viator ageBands: lowest band starts at ${lowestAge}, no infant/child band. Supplier floor.`,
+        evidence: `Viator ageBands: lowest band starts at ${lowestAge}, no infant/child band. Booking floor.`,
+        direction: 'direct_map',
+        source: 'viator_structured',
+      });
+
+      // Raise with_adult_from to at least the booking floor
+      const currentWaf = currentAttrs.with_adult_from as number | undefined;
+      if (currentWaf === undefined || currentWaf < lowestAge) {
+        influences.push({
+          attribute: 'with_adult_from',
+          value: lowestAge,
+          confidence: 0.85,
+          evidence: `Viator ageBands: no infant/child band, lowest bookable age ${lowestAge}. Children under ${lowestAge} cannot be booked.`,
+          direction: 'direct_map',
+          source: 'viator_structured',
+        });
+      }
+
+      // Serve a booking_age_note so agents relay it as a booking constraint
+      influences.push({
+        attribute: 'booking_age_note',
+        value: `Children under ${lowestAge} cannot be booked through this provider.`,
+        confidence: 0.95,
+        evidence: `Viator ageBands: lowest bookable age ${lowestAge}, no infant/child band.`,
         direction: 'direct_map',
         source: 'viator_structured',
       });

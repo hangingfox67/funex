@@ -245,16 +245,13 @@ export async function approveBatch(
         }
 
         // Apply based on direction
-        let shouldApply = false;
-        if (inf.direction === 'raise_only') {
-          // Only override if the influence value is MORE restrictive
-          shouldApply = true; // deriveInfluences already checked the floor
+        if (inf.direction === 'corroborate') {
+          // Bump confidence, add evidence, but keep existing value
+          confidence = Math.min(confidence + inf.confidence, 1.0);
+          evidenceEntries.push({ source: 'viator_structured', pointer: inf.evidence, inference_basis: 'textual' });
+          stats.viatorStructuredApplied++;
         } else {
-          // direct_map or declared_blanket — always apply (operator_terms can outrank)
-          shouldApply = true;
-        }
-
-        if (shouldApply) {
+          // raise_only, direct_map, declared_blanket — override value
           value = inf.value;
           confidence = Math.max(confidence, inf.confidence);
           evidenceEntries.push({ source: 'viator_structured', pointer: inf.evidence, inference_basis: 'textual' });
