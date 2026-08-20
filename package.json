@@ -16,6 +16,7 @@
     "enrich:status": "pnpm --filter @funex/enrich status",
     "enrich:collect": "pnpm --filter @funex/enrich collect",
     "ops:health": "bash scripts/ops-health.sh",
+    "ops:propose-demand": "tsx scripts/propose-demand-batch.ts",
     "test": "vitest run",
     "test:watch": "vitest"
   },
