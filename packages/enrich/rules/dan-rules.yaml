@@ -63,8 +63,10 @@
       note: "Parental judgment; kitchen supervision, not a hard floor"
 
 # ── Elephant sanctuaries ──
+# "Blue Elephant" is a cooking school — exclude via negative match in the engine.
+# Match only when category is wildlife or title contains "Sanctuary"/"Elephant Care".
 - selector:
-    title_contains: [Elephant]
+    title_contains: [Elephant Sanctuary, Elephant Nature, Elephant Jungle, Elephant Watch]
   rules:
     - attribute: non_swimmer_ok
       value: true
@@ -72,8 +74,10 @@
       note: "No deep water involvement at ethical sanctuaries"
 
 # ── Spa / massage ──
+# Match category OR title containing "Massage"/"Spa" but NOT "Golf" (resort name false positive).
 - selector:
-    category_contains: [spa, massage]
+    category_contains: [massage]
+    title_contains: [Massage, Spa Retreat, Spa Package, Spa Buffet, Kee Spa, Reiki]
   rules:
     - attribute: mobility
       value: limited
