@@ -7,7 +7,7 @@ import { db as defaultDb, attributes, providerMappings } from '@funex/graph';
 import type { ExtractionResult, BatchMetadata } from './extract.js';
 import { applyDanRules, checkVenueConsistency } from './dan-rules.js';
 import { getOperatorTerms } from './operator-terms.js';
-import { deriveFromViatorMetadata, deriveSeasicknessRisk } from './viator-structured.js';
+import { getVerbatimEntries, deriveInfluences, deriveSeasicknessRisk } from './viator-structured.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const diffDir = resolve(__dirname, '..', 'diffs');
@@ -129,18 +129,47 @@ export async function approveBatch(
   for (const result of results) {
     const productCode = expToProduct.get(result.experienceId);
     const opTerms = getOperatorTerms(result.experienceId);
-    const viatorOverrides = productCode ? deriveFromViatorMetadata(productCode) : [];
     const danRules = danRuleMap.get(result.experienceId);
 
-    // Build per-attribute override map from each source
+    // Build per-attribute override maps
     const opTermMap = new Map(opTerms.map((o) => [o.attribute, o]));
-    const viatorMap = new Map(viatorOverrides.map((o) => [o.attribute, o]));
 
-    // Derive seasickness from current vessel_type × water_exposure
-    // (after all overrides applied to those attrs)
+    // Viator influences (directional — not blind overrides)
+    const currentAttrs: Record<string, unknown> = {};
+    for (const [k, a] of Object.entries(result.attributes)) currentAttrs[k] = a.value;
+    const viatorInfluences = productCode ? deriveInfluences(productCode, currentAttrs) : [];
+    const viatorInfluenceMap = new Map(viatorInfluences.map((i) => [i.attribute, i]));
+
+    // Store viator verbatim entries (viator.flags, viator.physical_level, viator.age_bands)
+    if (productCode) {
+      const verbatim = getVerbatimEntries(productCode);
+      for (const v of verbatim) {
+        await db
+          .insert(attributes)
+          .values({
+            experienceId: result.experienceId,
+            key: v.key,
+            value: JSON.stringify(v.value),
+            confidence: v.confidence,
+            evidence: [{ source: v.source, pointer: v.evidence }] as { source: string; pointer: string }[],
+            riskClass: 'info',
+          })
+          .onConflictDoUpdate({
+            target: [attributes.experienceId, attributes.key],
+            set: {
+              value: sql`EXCLUDED.value`,
+              confidence: sql`EXCLUDED.confidence`,
+              evidence: sql`EXCLUDED.evidence`,
+              updatedAt: sql`now()`,
+            },
+          });
+      }
+    }
+
+    // Resolve attr value through the override chain (for derived seasickness)
     const resolveAttr = (key: string): unknown => {
       if (opTermMap.has(key)) return opTermMap.get(key)!.value;
-      if (viatorMap.has(key)) return viatorMap.get(key)!.value;
+      if (viatorInfluenceMap.has(key)) return viatorInfluenceMap.get(key)!.value;
       if (danRules?.has(key)) return danRules.get(key)!.value;
       return result.attributes[key]?.value;
     };
@@ -200,26 +229,38 @@ export async function approveBatch(
         stats.danRulesApplied++;
       }
 
-      // ── Layer 3: viator_structured (beats dan-rules) ──
-      if (viatorMap.has(key) && !correction) {
-        const vs = viatorMap.get(key)!;
+      // ── Layer 3: viator_structured (directional influences) ──
+      if (viatorInfluenceMap.has(key) && !correction) {
+        const inf = viatorInfluenceMap.get(key)!;
         const danRule = danRules?.get(key);
 
         // Flag declared-vs-rule head-on conflicts
-        if (danRule && JSON.stringify(vs.value) !== JSON.stringify(danRule.value)) {
+        if (danRule && JSON.stringify(inf.value) !== JSON.stringify(danRule.value)) {
           stats.declaredVsRuleConflicts.push({
             experienceId: result.experienceId, attribute: key,
-            declared: vs.value, declaredSource: 'viator_structured',
+            declared: inf.value, declaredSource: 'viator_structured',
             rule: danRule.value, ruleSource: 'dan-rules',
           });
-          console.log(`  DECLARED-VS-RULE: ${result.experienceId}.${key}: viator=${JSON.stringify(vs.value)} vs dan-rule=${JSON.stringify(danRule.value)}`);
+          console.log(`  DECLARED-VS-RULE: ${result.experienceId}.${key}: viator=${JSON.stringify(inf.value)} vs dan-rule=${JSON.stringify(danRule.value)}`);
         }
 
-        value = vs.value;
-        confidence = Math.max(confidence, vs.confidence);
-        evidenceEntries.push({ source: 'viator_structured', pointer: vs.evidence, inference_basis: 'textual' });
-        overrideSource = 'viator_structured';
-        stats.viatorStructuredApplied++;
+        // Apply based on direction
+        let shouldApply = false;
+        if (inf.direction === 'raise_only') {
+          // Only override if the influence value is MORE restrictive
+          shouldApply = true; // deriveInfluences already checked the floor
+        } else {
+          // direct_map or declared_blanket — always apply (operator_terms can outrank)
+          shouldApply = true;
+        }
+
+        if (shouldApply) {
+          value = inf.value;
+          confidence = Math.max(confidence, inf.confidence);
+          evidenceEntries.push({ source: 'viator_structured', pointer: inf.evidence, inference_basis: 'textual' });
+          overrideSource = 'viator_structured';
+          stats.viatorStructuredApplied++;
+        }
       }
 
       // ── Layer 2: operator_terms (beats viator_structured) ──
@@ -281,11 +322,10 @@ export async function approveBatch(
     }
 
     // ── Inject attributes from higher layers that extraction didn't produce ──
-    // (operator_terms or viator_structured may set attrs not in extraction output)
     const extractedKeys = new Set(Object.keys(result.attributes));
     const injected = [
       ...opTerms.filter((o) => !extractedKeys.has(o.attribute)).map((o) => ({ ...o, source: 'operator_terms' as const })),
-      ...viatorOverrides.filter((o) => !extractedKeys.has(o.attribute) && !opTermMap.has(o.attribute)).map((o) => ({ ...o, source: 'viator_structured' as const })),
+      ...viatorInfluences.filter((o) => !extractedKeys.has(o.attribute) && !opTermMap.has(o.attribute)).map((o) => ({ ...o, source: 'viator_structured' as const })),
     ];
 
     for (const extra of injected) {
