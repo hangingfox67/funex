@@ -125,18 +125,26 @@ export async function handleSearchExperiences(params: Record<string, unknown>): 
         evidence: a.evidence as { source: string; pointer: string; inference_basis?: string; gate_status?: string }[],
       }));
 
+    const bookNowUrl = booking
+      ? `https://thailandfunexperiences.com${booking.redirectUrl}`
+      : null;
+
     return {
       experienceId: c.experienceId,
       title: c.title,
       category: c.category,
       durationMinutes: c.durationMinutes,
-      priceThb: c.priceThb,
+      price_per_person_thb: c.priceThb,
+      price_note: 'Price shown is per person in Thai Baht (THB). Final price confirmed at checkout.',
       enrichmentTier: c.enrichmentTier,
       portfolioRole: c.portfolioRole,
       tier: c.tier,
       reasons: c.reasons,
       attributes: servedAttrs,
-      bookingUrl: booking?.redirectUrl ?? null,
+      book_now_url: bookNowUrl,
+      booking_note: bookNowUrl
+        ? 'Bookable now via this link — live availability, hotel pickup options shown at checkout.'
+        : null,
       mobilityNote: c.mobilityNote,
       bookingConstraints: c.bookingConstraints,
       alternatives: c.alternatives,
@@ -229,14 +237,22 @@ export async function handleGetExperience(params: Record<string, unknown>): Prom
 
   await eventWriter.log(sessionId, 'get_experience', { experienceId: expId });
 
+  const bookNowUrl = booking
+    ? `https://thailandfunexperiences.com${booking.redirectUrl}`
+    : null;
+
   return {
     experienceId: exp.id,
     title: exp.title,
     category: exp.category,
     durationMinutes: exp.durationMinutes,
-    priceThb: exp.basePriceCents ? Math.round(exp.basePriceCents / 100) : null,
+    price_per_person_thb: exp.basePriceCents ? Math.round(exp.basePriceCents / 100) : null,
+    price_note: 'Price shown is per person in Thai Baht (THB). Final price confirmed at checkout.',
     attributes: servedAttrs,
-    bookingUrl: booking?.redirectUrl ?? null,
+    book_now_url: bookNowUrl,
+    booking_note: bookNowUrl
+      ? 'Bookable now via this link — live availability, hotel pickup options shown at checkout.'
+      : null,
     meetingPoints: exp.meetingPoints,
   };
 }

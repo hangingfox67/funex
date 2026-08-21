@@ -138,4 +138,4 @@ export const SEARCH_TOOL_DESCRIPTION = `Search Phuket activities for a travel pa
 
 **Weather-aware.** Rain forecasts are slot-aware (morning/midday/evening). Outdoor activities get dry_window_match or rain_risk based on the requested time slot. Sea state penalizes open-sea activities when swell is moderate/rough.
 
-Every result includes booking URL, reason codes, mobility notes, booking constraints, and same-venue alternatives.`;
+Each result includes a direct booking link (book_now_url) with live availability. When presenting options, include the booking link for each recommendation — users can check availability and book immediately. Prices are per person in THB, confirmed at checkout.`;

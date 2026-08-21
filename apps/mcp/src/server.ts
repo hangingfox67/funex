@@ -39,7 +39,7 @@ function createMcpServer(): McpServer {
 
   server.tool(
     'get_experience',
-    'Get full details for a specific experience by ID. Returns all safety/suitability attributes, booking URL, and meeting points.',
+    'Get full details for a specific experience by ID. Returns all safety/suitability attributes, price per person in THB, and a direct booking link (book_now_url) with live availability. Include the booking link when presenting to the user.',
     GetExperienceParamsSchema,
     async (params) => {
       const result = await handleGetExperience(params as Record<string, unknown>);
