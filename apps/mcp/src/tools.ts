@@ -56,7 +56,7 @@ export async function handleSearchExperiences(params: Record<string, unknown>): 
   // ── Unsupported destination: graceful decline, never an error ──
   if (!SUPPORTED_DESTINATIONS.includes(destination)) {
     const sessionId = createSessionId();
-    await ensureSession(db, sessionId, destination);
+    await ensureSession(db, sessionId); // no destination_slug — it doesn't exist in our DB
     await eventWriter.log(sessionId, 'demand.unsupported_destination', {
       requestedDestination: destination,
     });
