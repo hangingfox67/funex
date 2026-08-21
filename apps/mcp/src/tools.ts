@@ -179,11 +179,25 @@ export async function handleSearchExperiences(params: Record<string, unknown>): 
     if (hints.length > 0) refine.canNarrowBy = hints;
   }
 
+  // Out-of-scope detection: immediacy/walk-in intent vs date-booked catalog
+  let finalResultQuality = resultQuality;
+  let finalResultQualityReason = resultQualityReason;
+  // Pattern: same-day + no time_slot + notes contain "near me"/"right now"/"walk in"
+  const isToday = date === new Date().toISOString().slice(0, 10);
+  const immediacyNotes = notes.includes('near me') || notes.includes('right now') || notes.includes('walk in') || notes.includes('walk-in');
+  if (immediacyNotes && candidates.length === 0) {
+    finalResultQuality = 'out_of_scope' as any;
+    finalResultQualityReason = 'This query looks like a walk-in/immediate-availability request. Our catalog covers bookable tourist activities with advance reservation. For immediate availability, the model should search the web or suggest the user check locally.';
+    await eventWriter.log(sessionId, 'demand.out_of_scope', {
+      destination, zone: staying, date, notes,
+    });
+  }
+
   const response = {
     sessionId,
     candidates,
-    resultQuality,
-    resultQualityReason,
+    resultQuality: finalResultQuality,
+    resultQualityReason: finalResultQualityReason,
     enrichedCount: candidates.filter((c) => c.enrichmentTier === 'enriched').length,
     basicCount: candidates.filter((c) => c.enrichmentTier === 'basic').length,
     excludedUnverifiedCount,

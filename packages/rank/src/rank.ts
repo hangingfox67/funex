@@ -177,6 +177,7 @@ export function rank(
       requestSlot: request.timeBucket,
       season: ctx?.season.season,
       transferMinutes: medianTransfer,
+      budgetCents: request.budgetCents,
       partyEnergy: request.energy,
       youngestAge: request.youngestAge,
     });
@@ -218,9 +219,12 @@ export function rank(
   const totalQualified = scored.length;
 
   // Sort: enriched first, then score desc
+  // Sort: enriched first, then score desc, then nearest wins ties
   scored.sort((a, b) => {
     if (a.enrichmentTier !== b.enrichmentTier) return a.enrichmentTier === 'enriched' ? -1 : 1;
-    return b.score - a.score;
+    if (b.score !== a.score) return b.score - a.score;
+    // "Same fun, less taxi" — nearest wins ties
+    return (a.transferMinutes ?? 999) - (b.transferMinutes ?? 999);
   });
 
   // ── Venue dedup: one slot per venue, variants as alternatives[] ──

@@ -49,12 +49,15 @@ export function scoreTier(
     requestSlot?: 'morning' | 'midday' | 'evening';
     season?: 'high' | 'shoulder' | 'low';
     transferMinutes?: number;
+    transferDistanceKm?: number;
+    budgetCents?: number;
     partyEnergy?: 'low' | 'moderate' | 'high';
     youngestAge?: number;
   },
 ): TierResult {
   let score = 35; // baseline — calibrated so excellent requires multiple positive signals
   const reasons: string[] = [];
+  let tierCapped: Tier | null = null;
 
   if (exp.enrichmentTier !== 'enriched') {
     return { tier: 'fair', score: 20, reasons: ['basic_tier'] };
@@ -121,10 +124,45 @@ export function scoreTier(
     }
   }
 
-  // ── Transfer time ──
+  // ── Transfer penalty (always on, ratio-based) ──
+  // transfer_time / activity_duration ratio: ≥1 = severe, ≥2 = tier-capped at fair
   if (opts.transferMinutes !== undefined) {
-    if (opts.transferMinutes <= 15) { score += 10; reasons.push('nearby'); }
-    else if (opts.transferMinutes >= 60) { score -= 10; reasons.push('far_transfer'); }
+    if (opts.transferMinutes <= 15) {
+      score += 10;
+      reasons.push('near_you');
+    } else {
+      const duration = exp.durationMinutes ?? 180; // default 3h if unknown
+      const ratio = opts.transferMinutes / duration;
+
+      if (ratio >= 2) {
+        // Transfer is 2× the activity — absurd, cap at fair
+        score -= 30;
+        reasons.push('far_for_its_length');
+        tierCapped = 'fair';
+      } else if (ratio >= 1) {
+        // Transfer equals activity — severe penalty
+        score -= 20;
+        reasons.push('far_for_its_length');
+      } else if (ratio >= 0.5) {
+        // Transfer is half the activity — moderate penalty
+        score -= 10;
+        reasons.push('far_transfer');
+      }
+      // ratio < 0.5 = acceptable, no penalty
+
+      // Budget transfer cost estimate (rough: 15 THB/km, min 200 THB per trip)
+      if (opts.budgetCents && opts.transferDistanceKm) {
+        const estTransferCostThb = Math.max(200, opts.transferDistanceKm * 15) * 2; // round trip
+        const budgetThb = opts.budgetCents / 100;
+        const costRatio = estTransferCostThb / budgetThb;
+        if (costRatio >= 0.5) {
+          score -= 15;
+          reasons.push('transfer_eats_budget');
+        } else if (costRatio >= 0.25) {
+          score -= 5;
+        }
+      }
+    }
   }
 
   // ── Energy match ──
@@ -193,6 +231,12 @@ export function scoreTier(
   if (score >= 65) tier = 'excellent';
   else if (score >= 40) tier = 'good';
   else tier = 'fair';
+
+  // Tier cap from transfer ratio
+  if (tierCapped) {
+    const capOrder: Record<Tier, number> = { excellent: 2, good: 1, fair: 0 };
+    if (capOrder[tier] > capOrder[tierCapped]) tier = tierCapped;
+  }
 
   return { tier, score, reasons };
 }
