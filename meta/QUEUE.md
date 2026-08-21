@@ -1,5 +1,22 @@
 # Build Queue — Post-Submission
 
+## Non-blocking (this week, priority order)
+
+### Duration audit
+Flag enriched products with duration <60min in implausible categories (boat_tour, diving, wildlife, temple_tour — these are never sub-1h). Re-extract flagged products via Batch API. Duration now feeds the transfer-to-duration ratio — errors distort ranking. A 30-min duration on a full-day island tour makes the transfer ratio look acceptable when it isn't.
+
+### refine.ask: has_own_transport
+Add `has_own_transport` as a split axis in refine hints. When transfer penalties differentiate the candidate pool and the query hasn't specified transport mode, the refine block should include: `"ask": ["Do you have your own transport? Results near you if not."]`. Fixture: the s_1883b72f session where a far product won because transfer wasn't penalized — had the model asked, the user might have said "no car" and gotten local-only results.
+
+### Session-per-response: confirmed intentional
+One session ID per search_experiences call. This is correct and stays:
+- Attribution: one sid per conversation turn maps to exactly one search → N clicks → M bookings
+- Viator campaign param = our sid → conversion joins cleanly
+- Multi-turn conversations: each turn gets a new session; the `seen`/`exclude` params link turns semantically without needing a persistent session
+- If we later add profile-level tracking (V2 auth), sessions absorb into profiles via the `claimedBy` field on the sessions table — already in the schema
+
+---
+
 ## A7-GEO: Static Site (Astro)
 
 ### Spec (from ARCHITECTURE M7)
