@@ -28,6 +28,7 @@ export const SearchParamsSchema = {
   time_slot: z.enum(['morning', 'midday', 'evening']).optional().describe('Preferred time of day'),
   budget_thb: z.number().optional().describe('Max price per person in THB'),
   max_duration_minutes: z.number().optional(),
+  return_by: z.string().optional().describe('Time deadline e.g. "13:00" — filters activities that cannot finish and return by this time'),
   max_results: z.number().min(1).max(8).default(4).describe('Portfolio size (default 4, max 8)'),
   exclude: z.object({
     categories: z.array(z.string()).optional(),
@@ -52,6 +53,7 @@ export async function handleSearchExperiences(params: Record<string, unknown>): 
   const timeSlot = params.time_slot as 'morning' | 'midday' | 'evening' | undefined;
   const budgetThb = params.budget_thb as number | undefined;
   const maxDuration = params.max_duration_minutes as number | undefined;
+  const returnBy = params.return_by as string | undefined;
   const maxResults = Math.min((params.max_results as number) ?? 4, 8);
   const exclude = params.exclude as { categories?: string[]; activity_tags?: string[]; exp_ids?: string[] } | undefined;
   const seen = params.seen as string[] | undefined;
@@ -102,6 +104,7 @@ export async function handleSearchExperiences(params: Record<string, unknown>): 
     energy: energy as 'low' | 'moderate' | 'high' | undefined,
     timeBucket: timeSlot,
     partySize: party.length,
+    returnBy,
     maxResults,
     exclude: exclude ? {
       categories: exclude.categories,

@@ -31,6 +31,9 @@ export interface FilterContext {
   // Intent
   activityIntent?: boolean;
 
+  // Time constraint
+  availableMinutes?: number; // from slot start to return_by deadline minus transfers
+
   // Exclusions — activity_tags catch combos ("no ziplines" excludes ATV+zipline combos)
   excludeActivityTags?: Set<string>;
 
@@ -98,6 +101,14 @@ export function applyHardFilters(exp: ExperienceRow, ctx: FilterContext): string
       if (match && ctx.youngestAge < parseInt(match[1])) {
         return `booking_age_floor:${match[1]}`;
       }
+    }
+  }
+
+  // Return-by deadline: activity + round-trip transfer must fit
+  if (ctx.availableMinutes && exp.durationMinutes) {
+    const roundTrip = (ctx.transferMinutes ?? 0) * 2;
+    if (exp.durationMinutes + roundTrip > ctx.availableMinutes) {
+      return 'exceeds_return_deadline';
     }
   }
 

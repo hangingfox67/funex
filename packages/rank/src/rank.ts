@@ -27,6 +27,7 @@ export interface RankRequest {
   timeBucket?: 'morning' | 'midday' | 'evening';
   transportIntent?: boolean;
   partySize?: number;
+  returnBy?: string; // "13:00" — ranker enforces duration + transfers ≤ deadline from slot start
   maxResults?: number; // default 4, cap 8
 
   // Exclusions for conversational follow-up
@@ -112,6 +113,17 @@ export function rank(
   const excludeCategories = new Set(request.exclude?.categories ?? []);
   const excludeVenues = new Set(request.exclude?.venues ?? []);
 
+  // Compute available minutes from slot start to return_by deadline
+  let availableMinutes: number | undefined;
+  if (request.returnBy) {
+    const slotStartHours: Record<string, number> = { morning: 7, midday: 11, evening: 16 };
+    const startHour = slotStartHours[bucket] ?? 7;
+    const [retH, retM] = request.returnBy.split(':').map(Number);
+    const deadlineMinutes = retH * 60 + (retM || 0);
+    const startMinutes = startHour * 60;
+    availableMinutes = Math.max(0, deadlineMinutes - startMinutes);
+  }
+
   const filterCtx: FilterContext = {
     youngestAge: request.youngestAge,
     requireNonSwimmerOk: request.requireNonSwimmerOk,
@@ -120,6 +132,7 @@ export function rank(
     budgetCents: request.budgetCents,
     maxDurationMinutes: request.maxDurationMinutes,
     maxTransferMinutes: request.maxTransferMinutes,
+    availableMinutes,
     rainSlots,
     requestSlot: request.timeBucket,
     activityIntent: !request.transportIntent,

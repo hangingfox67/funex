@@ -179,7 +179,7 @@ describe('Ranker (A5)', () => {
     }
   });
 
-  // ── All 28 personas ──
+  // ── All 29 personas ──
   for (const persona of personas) {
     it(`${persona.id}: ${persona.name}`, () => {
       const safetyFiltersActive = !!(
@@ -235,6 +235,15 @@ describe('Ranker (A5)', () => {
           const p = c.attributes.find((a) => a.key === 'pregnant_ok');
           if (p) {
             expect(p.value, `${persona.id}: ${c.experienceId} not pregnant safe`).not.toBe(false);
+          }
+        }
+      }
+
+      // Return-by: no full-day trips when deadline enforced
+      if (persona.expect.noFullDayTrips) {
+        for (const c of result.candidates) {
+          if (c.durationMinutes && c.durationMinutes > 360) {
+            throw new Error(`${persona.id}: ${c.title} is ${c.durationMinutes}min — should be filtered by return_by deadline`);
           }
         }
       }

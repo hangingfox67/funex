@@ -194,5 +194,12 @@
     "description": "Budget under 1000 THB per person, anything fun",
     "request": { "stayingZone": "patong", "date": "2026-08-20", "budgetCents": 100000, "energy": "moderate" },
     "expect": { "minCandidates": 1 }
+  },
+  {
+    "id": "p29",
+    "name": "Girls While Boys Surf",
+    "description": "I just want to do sonething with the girls while the boys are surfing but we have to be back at the hotel before 1pm",
+    "request": { "stayingZone": "kata", "date": "2026-08-20", "energy": "moderate", "timeBucket": "morning", "returnBy": "13:00" },
+    "expect": { "minCandidates": 2, "noFullDayTrips": true }
   }
 ]
