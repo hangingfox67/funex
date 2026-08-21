@@ -18,11 +18,14 @@
     "ops:health": "bash scripts/ops-health.sh",
     "ops:propose-demand": "tsx scripts/propose-demand-batch.ts",
     "ops:link-health": "NODE_OPTIONS='--max-old-space-size=256' tsx scripts/link-health.ts",
+    "ops:import-conversions": "npx tsx scripts/import-conversions.ts",
+    "ops:dashboard": "npx tsx scripts/generate-dashboard.ts",
     "test": "vitest run",
     "test:watch": "vitest"
   },
   "devDependencies": {
     "dotenv": "^17.4.2",
+    "postgres": "^3.4.0",
     "typescript": "^5.6.0",
     "vitest": "^2.1.0"
   }
