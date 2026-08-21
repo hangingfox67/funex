@@ -55,7 +55,16 @@ async function main() {
   const app = Fastify({ logger: true });
   const eventWriter = createEventWriter(db);
 
+  const formbody = await import('@fastify/formbody');
+  await app.register(formbody.default);
+  const multipart = await import('@fastify/multipart');
+  await app.register(multipart.default);
   await app.register(redirectPlugin, { db, eventWriter });
+
+  // Admin dashboard
+  const { registerAdminPages } = await import('./admin-pages.js');
+  registerAdminPages(app);
+
   app.get('/health', async () => ({ status: 'ok', version: '0.1.0' }));
   app.post('/api/search', async (request) => handleSearchExperiences(request.body as Record<string, unknown>));
   app.post('/api/experience', async (request) => handleGetExperience(request.body as Record<string, unknown>));

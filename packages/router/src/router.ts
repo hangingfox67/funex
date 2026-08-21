@@ -88,7 +88,7 @@ export async function routeExperience(
     .from(experiences)
     .where(eq(experiences.id, experienceId));
 
-  const title = exp?.title ?? providerProductId;
+  const title = exp?.title ?? mappings[0].providerProductId;
 
   return buildBookingUrl(bestRail, mappings[0].providerProductId, sessionId, experienceId, title);
 }
