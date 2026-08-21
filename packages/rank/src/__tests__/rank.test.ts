@@ -179,7 +179,7 @@ describe('Ranker (A5)', () => {
     }
   });
 
-  // ── All 25 personas ──
+  // ── All 28 personas ──
   for (const persona of personas) {
     it(`${persona.id}: ${persona.name}`, () => {
       const safetyFiltersActive = !!(
@@ -235,6 +235,17 @@ describe('Ranker (A5)', () => {
           const p = c.attributes.find((a) => a.key === 'pregnant_ok');
           if (p) {
             expect(p.value, `${persona.id}: ${c.experienceId} not pregnant safe`).not.toBe(false);
+          }
+        }
+      }
+
+      // Min group violation: no product should require more travelers than the party
+      if (persona.expect.noMinGroupViolation && persona.request.partySize) {
+        for (const c of result.candidates.filter((c) => c.enrichmentTier === 'enriched')) {
+          const mt = c.attributes.find((a) => a.key === 'min_travelers_per_booking');
+          if (mt && typeof mt.value === 'number') {
+            expect(mt.value, `${persona.id}: ${c.experienceId} requires ${mt.value} travelers but party is ${persona.request.partySize}`)
+              .toBeLessThanOrEqual(persona.request.partySize);
           }
         }
       }

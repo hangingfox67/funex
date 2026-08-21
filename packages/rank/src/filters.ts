@@ -13,6 +13,7 @@ export interface RainSlotInfo {
 export interface FilterContext {
   // Party constraints
   youngestAge?: number;
+  partySize?: number;
   requireNonSwimmerOk?: boolean;
   requirePregnantOk?: boolean;
   maxMobility?: 'limited' | 'moderate' | 'full';
@@ -97,6 +98,14 @@ export function applyHardFilters(exp: ExperienceRow, ctx: FilterContext): string
       if (match && ctx.youngestAge < parseInt(match[1])) {
         return `booking_age_floor:${match[1]}`;
       }
+    }
+  }
+
+  // Min travelers: solo/small party can't book products requiring 2+
+  if (ctx.partySize !== undefined) {
+    const minTravelers = val('min_travelers_per_booking') as number | undefined;
+    if (minTravelers && ctx.partySize < minTravelers) {
+      return `min_travelers:${minTravelers}`;
     }
   }
 

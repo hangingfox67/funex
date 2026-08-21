@@ -101,6 +101,7 @@ export async function handleSearchExperiences(params: Record<string, unknown>): 
     maxDurationMinutes: maxDuration,
     energy: energy as 'low' | 'moderate' | 'high' | undefined,
     timeBucket: timeSlot,
+    partySize: party.length,
     maxResults,
     exclude: exclude ? {
       categories: exclude.categories,

@@ -76,6 +76,18 @@ zones:
           - [98.405, 7.900]
           - [98.375, 7.900]
           - [98.375, 7.870]
+  kamala:
+    name: Kamala
+    kind: beach
+    center: [98.2817, 7.9550]
+    geometry:
+      type: Polygon
+      coordinates:
+        - - [98.270, 7.940]
+          - [98.295, 7.940]
+          - [98.295, 7.970]
+          - [98.270, 7.970]
+          - [98.270, 7.940]
   airport:
     name: Airport
     kind: airport
@@ -97,6 +109,7 @@ exposed_to:
   karon:    { direction: 240, label: "SW (Andaman)" }
   patong:   { direction: 270, label: "W (Andaman)" }       # faces due west
   bang_tao: { direction: 280, label: "WNW (Andaman)" }     # faces WNW
+  kamala:   { direction: 270, label: "W (Andaman)" }        # west coast between Patong and Bang Tao
   panwa:    { direction: 135, label: "SE (sheltered)" }     # east side, sheltered from monsoon
   old_town: { direction: 90,  label: "E (sheltered)" }      # east side, inner harbor
   airport:  { direction: 0,   label: "N (no coast)" }       # inland, not wave-relevant
@@ -128,6 +141,7 @@ traffic_factors:
   kata:     { morning: 1.0, midday: 1.1, evening: 1.4 }
   karon:    { morning: 1.0, midday: 1.1, evening: 1.4 }
   patong:   { morning: 1.1, midday: 1.2, evening: 1.5 }
+  kamala:   { morning: 1.0, midday: 1.0, evening: 1.3 }
   bang_tao: { morning: 1.0, midday: 1.0, evening: 1.3 }
   panwa:    { morning: 1.0, midday: 1.0, evening: 1.1 }
   old_town: { morning: 1.1, midday: 1.2, evening: 1.3 }

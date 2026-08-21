@@ -27,6 +27,7 @@ interface AgeBand {
   ageBand: string;
   startAge: number;
   endAge: number;
+  minTravelersPerBooking?: number;
 }
 
 interface ProductMetadata {
@@ -323,6 +324,23 @@ export function deriveInfluences(
         value: `Children under ${lowestAge} cannot be booked through this provider.`,
         confidence: 0.95,
         evidence: `Viator ageBands: lowest bookable age ${lowestAge}, no infant/child band.`,
+        direction: 'direct_map',
+        source: 'viator_structured',
+      });
+    }
+
+    // ────────────────────────────────────────────────────
+    // Rule: min_travelers_per_booking from ageBands.
+    // Solo travelers and small parties can't book products
+    // that require 2+ travelers.
+    // ────────────────────────────────────────────────────
+    const maxMinTravelers = Math.max(...product.ageBands.map((b) => b.minTravelersPerBooking ?? 0));
+    if (maxMinTravelers > 1) {
+      influences.push({
+        attribute: 'min_travelers_per_booking',
+        value: maxMinTravelers,
+        confidence: 1.0,
+        evidence: `Viator ageBands: minimum ${maxMinTravelers} travelers required per booking.`,
         direction: 'direct_map',
         source: 'viator_structured',
       });

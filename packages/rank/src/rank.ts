@@ -26,6 +26,7 @@ export interface RankRequest {
   energy?: 'low' | 'moderate' | 'high';
   timeBucket?: 'morning' | 'midday' | 'evening';
   transportIntent?: boolean;
+  partySize?: number;
   maxResults?: number; // default 4, cap 8
 
   // Exclusions for conversational follow-up
@@ -122,6 +123,7 @@ export function rank(
     rainSlots,
     requestSlot: request.timeBucket,
     activityIntent: !request.transportIntent,
+    partySize: request.partySize,
     excludeActivityTags: request.exclude?.activityTags ? new Set(request.exclude.activityTags) : undefined,
     excludeIds,
   };
