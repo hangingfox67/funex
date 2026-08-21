@@ -25,7 +25,7 @@ export interface CatalogStats {
   basic: number;
 }
 
-export type ResultQuality = 'enriched' | 'mixed' | 'basic_only' | 'out_of_scope';
+export type ResultQuality = 'enriched' | 'mixed' | 'basic_only' | 'out_of_scope' | 'unsupported_destination';
 
 export interface SearchResult {
   results: ExperienceRow[];

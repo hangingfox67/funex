@@ -44,11 +44,36 @@ export const GetExperienceParamsSchema = {
 
 // ── Handlers ──
 
+const SUPPORTED_DESTINATIONS = ['phuket'];
+const SUPPORTED_DESTINATION_MESSAGE = 'We currently cover Phuket and its surroundings (Phang Nga Bay, Khao Lak, Ko Yao).';
+
 export async function handleSearchExperiences(params: Record<string, unknown>): Promise<unknown> {
-  const destination = (params.destination as string) ?? 'phuket';
+  const destination = ((params.destination as string) ?? 'phuket').toLowerCase().trim();
   const date = params.date as string;
   const staying = params.staying as string;
   const party = params.party as { role: string; age?: number; notes?: string }[];
+
+  // ── Unsupported destination: graceful decline, never an error ──
+  if (!SUPPORTED_DESTINATIONS.includes(destination)) {
+    const sessionId = createSessionId();
+    await ensureSession(db, sessionId, destination);
+    await eventWriter.log(sessionId, 'demand.unsupported_destination', {
+      requestedDestination: destination,
+    });
+    return {
+      sessionId,
+      candidates: [],
+      resultQuality: 'unsupported_destination',
+      resultQualityReason: `${SUPPORTED_DESTINATION_MESSAGE} "${destination}" isn't supported yet.`,
+      enrichedCount: 0,
+      basicCount: 0,
+      excludedUnverifiedCount: 0,
+      supportedDestinations: SUPPORTED_DESTINATIONS,
+      context: null,
+      refine: null,
+      catalogBreadth: { totalDestination: 0, enriched: 0, basic: 0 },
+    };
+  }
   const energy = params.energy as string | undefined;
   const timeSlot = params.time_slot as 'morning' | 'midday' | 'evening' | undefined;
   const budgetThb = params.budget_thb as number | undefined;

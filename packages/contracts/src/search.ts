@@ -86,7 +86,7 @@ export type Candidate = z.infer<typeof CandidateSchema>;
 
 // ── Search response ──
 
-export const ResultQualitySchema = z.enum(['enriched', 'mixed', 'basic_only', 'out_of_scope']);
+export const ResultQualitySchema = z.enum(['enriched', 'mixed', 'basic_only', 'out_of_scope', 'unsupported_destination']);
 export type ResultQuality = z.infer<typeof ResultQualitySchema>;
 
 export const SearchResponseSchema = z.object({

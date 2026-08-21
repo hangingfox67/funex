@@ -22,3 +22,8 @@ session: (none) | invoked: no | slots-filled: 0/4 | our-link: n/a | click: n/a
 finding: Query intent is immediacy/walk-in — "near me right now" implies same-day, current location, no advance booking. Our catalog is date-booked tourist activities with advance reservation. Model correctly fell back to web search. This is out-of-scope by design — our value is transformation/composition/context, not real-time availability of walk-in services. However, we should explicitly signal out-of-scope so the model hands off cleanly instead of returning marginally-relevant spa products that happen to match keywords.
 action: applied — out_of_scope result_quality + demand.out_of_scope event (this commit)
 
+## P-krabi — "things to do in Krabi" — 2026-08-21
+session: (error) | invoked: yes | slots-filled: 3/4 | our-link: n/a | click: n/a
+finding: ChatGPT invoked search_experiences with destination="krabi". The tool threw a validation error (ENOENT on krabi.yaml) instead of declining gracefully. Model fell back honestly and told the user the tool errored. This is submission-blocking — a well-formed request must never throw. Fix: unknown destinations return HTTP 200 with result_quality: "unsupported_destination" and a message listing supported destinations. Adjacent Phuket inventory NOT served as consolation — our pickups are Phuket-side; recommending them to a Krabi guest is the proximity bug at island scale. Logged as demand.unsupported_destination to track expansion triggers.
+action: applied — graceful unsupported_destination response (this commit)
+
