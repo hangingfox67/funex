@@ -22,8 +22,13 @@ export const SearchParamsSchema = {
   party: z.array(z.object({
     role: z.string().describe('adult, child, senior'),
     age: z.number().optional(),
-    notes: z.string().optional().describe('e.g. non-swimmer, limited-walking, pregnant'),
-  })).min(1).describe('Travel party members'),
+  })).min(1).describe('Travel party members — ages help filter bookability and suitability'),
+  constraints: z.object({
+    non_swimmer: z.boolean().optional().describe('Party includes non-swimmers'),
+    pregnant: z.boolean().optional().describe('Party includes pregnant traveler'),
+    mobility: z.enum(['limited', 'moderate', 'full']).optional().describe('Maximum mobility level the party can handle'),
+    motion_comfort: z.enum(['low', 'normal']).optional().describe('low = avoid rough seas, speedboats, bumpy rides. Use this instead of free-text health notes.'),
+  }).optional().describe('Structured safety/comfort constraints. Translate traveler health and comfort needs into these flags rather than free text.'),
   energy: z.enum(['low', 'moderate', 'high']).optional().describe('Party energy level'),
   time_slot: z.enum(['morning', 'midday', 'evening']).optional().describe('Preferred time of day'),
   budget_thb: z.number().optional().describe('Max price per person in THB'),
@@ -83,15 +88,20 @@ export async function handleSearchExperiences(params: Record<string, unknown>): 
   const exclude = params.exclude as { categories?: string[]; activity_tags?: string[]; exp_ids?: string[] } | undefined;
   const seen = params.seen as string[] | undefined;
 
-  // Derive constraints from party
+  // Read structured constraints (no free-text health parsing)
+  const constraints = params.constraints as {
+    non_swimmer?: boolean;
+    pregnant?: boolean;
+    mobility?: 'limited' | 'moderate' | 'full';
+    motion_comfort?: 'low' | 'normal';
+  } | undefined;
+
   const ages = party.filter((p) => p.age !== undefined).map((p) => p.age!);
   const youngestAge = ages.length > 0 ? Math.min(...ages) : undefined;
-  const notes = party.map((p) => p.notes ?? '').join(' ').toLowerCase();
-  const requireNonSwimmerOk = notes.includes('non-swimmer') || notes.includes('non swimmer');
-  const requirePregnantOk = notes.includes('pregnant');
-  const maxMobility = notes.includes('wheelchair') ? 'limited' as const
-    : notes.includes('limited-walking') || notes.includes('limited walking') ? 'limited' as const
-    : undefined;
+  const requireNonSwimmerOk = constraints?.non_swimmer ?? false;
+  const requirePregnantOk = constraints?.pregnant ?? false;
+  const maxMobility = constraints?.mobility;
+  const motionComfort = constraints?.motion_comfort;
 
   const safetyFiltersActive = !!(requireNonSwimmerOk || requirePregnantOk || maxMobility);
 
@@ -129,6 +139,7 @@ export async function handleSearchExperiences(params: Record<string, unknown>): 
     energy: energy as 'low' | 'moderate' | 'high' | undefined,
     timeBucket: timeSlot,
     partySize: party.length,
+    motionComfort: motionComfort,
     returnBy,
     maxResults,
     exclude: exclude ? {
@@ -204,19 +215,9 @@ export async function handleSearchExperiences(params: Record<string, unknown>): 
     if (hints.length > 0) refine.canNarrowBy = hints;
   }
 
-  // Out-of-scope detection: immediacy/walk-in intent vs date-booked catalog
+  // Result quality finalization
   let finalResultQuality = resultQuality;
   let finalResultQualityReason = resultQualityReason;
-  // Pattern: same-day + no time_slot + notes contain "near me"/"right now"/"walk in"
-  const isToday = date === new Date().toISOString().slice(0, 10);
-  const immediacyNotes = notes.includes('near me') || notes.includes('right now') || notes.includes('walk in') || notes.includes('walk-in');
-  if (immediacyNotes && candidates.length === 0) {
-    finalResultQuality = 'out_of_scope' as any;
-    finalResultQualityReason = 'This query looks like a walk-in/immediate-availability request. Our catalog covers bookable tourist activities with advance reservation. For immediate availability, the model should search the web or suggest the user check locally.';
-    await eventWriter.log(sessionId, 'demand.out_of_scope', {
-      destination, zone: staying, date, notes,
-    });
-  }
 
   const response = {
     sessionId,
@@ -239,11 +240,19 @@ export async function handleSearchExperiences(params: Record<string, unknown>): 
     },
   };
 
-  // Log search event
+  // Log search event — redacted: constraint flags only, never verbatim health text
   await eventWriter.log(sessionId, 'search', {
-    destination, zone: staying, date, party,
+    destination, zone: staying, date,
+    partySize: party.length,
+    partyAges: ages,
+    constraints: {
+      nonSwimmer: requireNonSwimmerOk || undefined,
+      pregnant: requirePregnantOk || undefined,
+      mobility: maxMobility,
+      motionComfort: motionComfort,
+    },
     candidateCount: candidates.length,
-    resultQuality,
+    resultQuality: finalResultQuality,
     enrichedCount: response.enrichedCount,
   });
 

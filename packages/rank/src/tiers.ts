@@ -51,6 +51,7 @@ export function scoreTier(
     transferMinutes?: number;
     transferDistanceKm?: number;
     budgetCents?: number;
+    motionComfort?: 'low' | 'normal';
     partyEnergy?: 'low' | 'moderate' | 'high';
     youngestAge?: number;
   },
@@ -86,6 +87,20 @@ export function scoreTier(
       }
     }
     // Land-based (water_exposure=none, vessel_type=none): no marine reason codes
+  }
+
+  // ── Motion comfort: penalize moderate seasickness for low-comfort travelers ──
+  if (opts.motionComfort === 'low') {
+    const seasick = val('seasickness_risk') as string | undefined;
+    if (seasick === 'moderate') {
+      score -= 10;
+      reasons.push('motion_comfort_risk');
+    }
+    // high seasickness already hard-filtered; low/none are fine
+    if (seasick === 'none' || seasick === 'low') {
+      score += 5;
+      reasons.push('smooth_ride');
+    }
   }
 
   // ── Slot-aware rain fit (duration-aware) ──

@@ -27,6 +27,7 @@ export interface RankRequest {
   timeBucket?: 'morning' | 'midday' | 'evening';
   transportIntent?: boolean;
   partySize?: number;
+  motionComfort?: 'low' | 'normal';
   returnBy?: string; // "13:00" — ranker enforces duration + transfers ≤ deadline from slot start
   maxResults?: number; // default 4, cap 8
 
@@ -137,6 +138,7 @@ export function rank(
     requestSlot: request.timeBucket,
     activityIntent: !request.transportIntent,
     partySize: request.partySize,
+    motionComfort: request.motionComfort,
     excludeActivityTags: request.exclude?.activityTags ? new Set(request.exclude.activityTags) : undefined,
     excludeIds,
   };
@@ -178,6 +180,7 @@ export function rank(
       season: ctx?.season.season,
       transferMinutes: medianTransfer,
       budgetCents: request.budgetCents,
+      motionComfort: request.motionComfort,
       partyEnergy: request.energy,
       youngestAge: request.youngestAge,
     });

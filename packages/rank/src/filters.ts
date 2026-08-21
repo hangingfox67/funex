@@ -17,6 +17,7 @@ export interface FilterContext {
   requireNonSwimmerOk?: boolean;
   requirePregnantOk?: boolean;
   maxMobility?: 'limited' | 'moderate' | 'full';
+  motionComfort?: 'low' | 'normal';
 
   // Logistics
   budgetCents?: number;
@@ -140,6 +141,12 @@ export function applyHardFilters(exp: ExperienceRow, ctx: FilterContext): string
   if (ctx.requirePregnantOk) {
     const pregOk = val('pregnant_ok');
     if (pregOk === false) return 'not_pregnant_safe';
+  }
+
+  // Motion comfort: low = hard-filter high seasickness risk
+  if (ctx.motionComfort === 'low') {
+    const seasick = val('seasickness_risk') as string | undefined;
+    if (seasick === 'high') return 'motion_comfort:high_seasickness';
   }
 
   // Slot-aware rain filtering
