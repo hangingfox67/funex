@@ -31,9 +31,10 @@ export function registerAdminPages(app: FastifyInstance): void {
   app.get('/admin', async (request, reply) => {
     if (!guard(request, reply)) return;
 
-    const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
-    const weekStart = new Date(now.getTime() - 7 * 86400000).toISOString();
+    // Thailand time boundaries (UTC+7)
+    const nowBkk = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Bangkok' }));
+    const todayStart = new Date(Date.UTC(nowBkk.getFullYear(), nowBkk.getMonth(), nowBkk.getDate()) - 7 * 3600000).toISOString();
+    const weekStart = new Date(Date.now() - 7 * 86400000).toISOString();
 
     const [allTime] = await client`SELECT count(DISTINCT session_id) as sessions, count(*) FILTER (WHERE type='search') as searches, count(*) FILTER (WHERE type='click') as clicks, count(*) FILTER (WHERE type='booking') as bookings, coalesce(sum((payload->>'commission')::numeric) FILTER (WHERE type='booking'), 0) as revenue FROM event WHERE type IN ('search','click','booking')`;
     const [today] = await client`SELECT count(DISTINCT session_id) as sessions, count(*) FILTER (WHERE type='search') as searches, count(*) FILTER (WHERE type='click') as clicks FROM event WHERE type IN ('search','click') AND created_at >= ${todayStart}`;
@@ -63,7 +64,7 @@ export function registerAdminPages(app: FastifyInstance): void {
 
     const eventRows = events.map((e: any) => {
       const p = e.payload ?? {};
-      const t = new Date(e.created_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+      const t = new Date(e.created_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Bangkok' });
       const sid = String(e.session_id).substring(2, 10);
       let detail = '';
       if (e.type === 'search') detail = `${p.zone ?? '?'} ${p.date ?? ''} party:${Array.isArray(p.party) ? p.party.length : '?'}`;
