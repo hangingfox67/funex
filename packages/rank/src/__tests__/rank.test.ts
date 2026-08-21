@@ -278,6 +278,34 @@ describe('Ranker (A5)', () => {
     const filtered = transportResult.filtered.filter((f) => f.reason === 'logistics_not_activity');
     expect(filtered.length).toBe(0);
   });
+
+  // ── Geography: khao_lak distance sanity ──
+  it('Kata guest with default transfer tolerance does NOT get khao_lak products excellent', () => {
+    // Khao Lak is ~90km from Kata — should NOT dominate the portfolio
+    const result = rank(allExperiences, ctx, {
+      stayingZone: 'kata',
+      date: '2026-08-20',
+      maxResults: 8,
+    });
+
+    // Khao Lak products (title contains "Khao Lak") should not be in top results
+    // unless they have very high scores for other reasons
+    const khaoLakInTop = result.candidates.filter((c) =>
+      c.title.toLowerCase().includes('khao lak'),
+    );
+    // Acceptable: 0-1 khao lak products (might appear as wildcard). NOT dominating.
+    expect(khaoLakInTop.length).toBeLessThanOrEqual(1);
+  });
+
+  it('staying=khao_lak anchors cleanly and returns results', () => {
+    const result = rank(allExperiences, ctx, {
+      stayingZone: 'khao_lak',
+      date: '2026-08-20',
+      maxResults: 4,
+    });
+
+    expect(result.candidates.length).toBeGreaterThanOrEqual(1);
+  });
 });
 
 // ── Forced-weather fixtures (never depend on real weather) ──

@@ -36,6 +36,7 @@ interface ZoneCenter {
   slug: string;
   lat: number;
   lng: number;
+  ferryCrossingMinutes?: number; // fixed crossing leg added to all routes to/from this zone
 }
 
 interface TrafficFactors {
@@ -147,6 +148,7 @@ export async function buildTravelMatrix(
         }
       }
 
+      applyFerryCrossings(transfers, zones);
       return {
         destination: 'phuket',
         zones: zones.map((z) => z.slug),
@@ -181,6 +183,7 @@ export async function buildTravelMatrix(
     }
   }
 
+  applyFerryCrossings(transfers, zones);
   return {
     destination: 'phuket',
     zones: zones.map((z) => z.slug),
@@ -189,6 +192,26 @@ export async function buildTravelMatrix(
     basis: 'haversine_estimate',
     as_of: new Date().toISOString(),
   };
+}
+
+/** Add ferry crossing time to transfers involving ferry-access zones. */
+function applyFerryCrossings(transfers: TransferTime[], zones: ZoneCenter[]): void {
+  const ferryZones = new Map<string, number>();
+  for (const z of zones) {
+    if (z.ferryCrossingMinutes) ferryZones.set(z.slug, z.ferryCrossingMinutes);
+  }
+  if (ferryZones.size === 0) return;
+
+  for (const t of transfers) {
+    // Add ferry time if either end is a ferry-access zone
+    const fromFerry = ferryZones.get(t.from_zone) ?? 0;
+    const toFerry = ferryZones.get(t.to_zone) ?? 0;
+    // Use the max (you only cross once, from whichever side)
+    const ferryCrossing = Math.max(fromFerry, toFerry);
+    if (ferryCrossing > 0) {
+      t.duration_minutes += ferryCrossing;
+    }
+  }
 }
 
 /** Look up a single transfer from the matrix. */

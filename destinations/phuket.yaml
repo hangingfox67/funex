@@ -88,6 +88,30 @@ zones:
           - [98.295, 7.970]
           - [98.270, 7.970]
           - [98.270, 7.940]
+  rawai:
+    name: Rawai
+    kind: beach
+    center: [98.3367, 7.7750]
+    geometry:
+      type: Polygon
+      coordinates:
+        - - [98.315, 7.760]
+          - [98.355, 7.760]
+          - [98.355, 7.790]
+          - [98.315, 7.790]
+          - [98.315, 7.760]
+  mai_khao:
+    name: Mai Khao
+    kind: beach
+    center: [98.3017, 8.0700]
+    geometry:
+      type: Polygon
+      coordinates:
+        - - [98.285, 8.050]
+          - [98.320, 8.050]
+          - [98.320, 8.095]
+          - [98.285, 8.095]
+          - [98.285, 8.050]
   airport:
     name: Airport
     kind: airport
@@ -100,6 +124,44 @@ zones:
           - [98.330, 8.125]
           - [98.295, 8.125]
           - [98.295, 8.095]
+  natai:
+    name: Natai Beach
+    kind: beach
+    center: [98.2733, 8.2200]
+    geometry:
+      type: Polygon
+      coordinates:
+        - - [98.255, 8.200]
+          - [98.290, 8.200]
+          - [98.290, 8.240]
+          - [98.255, 8.240]
+          - [98.255, 8.200]
+  khao_lak:
+    name: Khao Lak
+    kind: beach
+    center: [98.2450, 8.6300]
+    geometry:
+      type: Polygon
+      coordinates:
+        - - [98.220, 8.600]
+          - [98.275, 8.600]
+          - [98.275, 8.670]
+          - [98.220, 8.670]
+          - [98.220, 8.600]
+  ko_yao:
+    name: Ko Yao
+    kind: island
+    access: ferry
+    ferry_crossing_minutes: 30
+    center: [98.5800, 8.0700]
+    geometry:
+      type: Polygon
+      coordinates:
+        - - [98.540, 8.020]
+          - [98.620, 8.020]
+          - [98.620, 8.120]
+          - [98.540, 8.120]
+          - [98.540, 8.020]
 
 # exposed_to: swell directions each zone faces.
 # Used to join with marine forecast swell_direction → per-zone sea state.
@@ -110,9 +172,14 @@ exposed_to:
   patong:   { direction: 270, label: "W (Andaman)" }       # faces due west
   bang_tao: { direction: 280, label: "WNW (Andaman)" }     # faces WNW
   kamala:   { direction: 270, label: "W (Andaman)" }        # west coast between Patong and Bang Tao
+  rawai:    { direction: 180, label: "S (south tip)" }       # south tip, some monsoon exposure
   panwa:    { direction: 135, label: "SE (sheltered)" }     # east side, sheltered from monsoon
   old_town: { direction: 90,  label: "E (sheltered)" }      # east side, inner harbor
+  mai_khao: { direction: 280, label: "WNW (Andaman)" }      # north west coast
   airport:  { direction: 0,   label: "N (no coast)" }       # inland, not wave-relevant
+  natai:    { direction: 270, label: "W (Andaman)" }         # west coast, north of airport
+  khao_lak: { direction: 270, label: "W (Andaman)" }        # west coast, full monsoon exposure
+  ko_yao:   { direction: 90,  label: "E (Phang Nga Bay)" }  # east-facing, sheltered in the bay
 
 env_variables: [weather, marine]
 
@@ -143,9 +210,27 @@ traffic_factors:
   patong:   { morning: 1.1, midday: 1.2, evening: 1.5 }
   kamala:   { morning: 1.0, midday: 1.0, evening: 1.3 }
   bang_tao: { morning: 1.0, midday: 1.0, evening: 1.3 }
+  rawai:    { morning: 1.0, midday: 1.0, evening: 1.2 }
   panwa:    { morning: 1.0, midday: 1.0, evening: 1.1 }
   old_town: { morning: 1.1, midday: 1.2, evening: 1.3 }
+  mai_khao: { morning: 1.0, midday: 1.0, evening: 1.1 }
   airport:  { morning: 1.0, midday: 1.0, evening: 1.1 }
+  natai:    { morning: 1.0, midday: 1.0, evening: 1.0 }
+  khao_lak: { morning: 1.0, midday: 1.0, evening: 1.0 }
+  ko_yao:   { morning: 1.0, midday: 1.0, evening: 1.0 }
+
+catalog_sources:
+  - provider: viator
+    destination_id: "349"     # Phuket — includes Khao Lak, Phang Nga, Natai products
+    synced: true
+  # Khao Lak (5439), Phang Nga (26571), Ko Yao (50498) return 0 products
+  # on Viator — all inventory is tagged to dest 349. No separate sync needed.
+
+# Serving semantics:
+# - Zones are physical geography (beaches, towns, airports, islands).
+# - Catalog sources are provider-scoped (Viator dest 349 covers all zones).
+# - The brand ("Thailand Fun Experiences") is how travelers speak —
+#   promotion of a zone-cluster to its own brand is config, never code.
 
 shell:
   brand: "Thailand Fun Experiences"

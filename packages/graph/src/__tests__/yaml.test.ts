@@ -23,12 +23,13 @@ describe('phuket.yaml', () => {
     expect(config.env_variables).toContain('marine');
   });
 
-  it('defines 8 zones with valid geometry', () => {
+  it('defines 13 zones with valid geometry', () => {
     const zoneKeys = Object.keys(config.zones);
-    expect(zoneKeys).toHaveLength(8);
+    expect(zoneKeys).toHaveLength(13);
     expect(zoneKeys).toEqual(
       expect.arrayContaining([
-        'kata', 'karon', 'patong', 'kamala', 'bang_tao', 'panwa', 'old_town', 'airport',
+        'kata', 'karon', 'patong', 'kamala', 'bang_tao', 'rawai', 'panwa',
+        'old_town', 'mai_khao', 'airport', 'natai', 'khao_lak', 'ko_yao',
       ]),
     );
 

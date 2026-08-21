@@ -145,11 +145,14 @@ export function rank(
       continue;
     }
 
-    const avgTransfer = transferMap.size > 0
-      ? Math.round([...transferMap.values()].reduce((a, b) => a + b, 0) / transferMap.size)
-      : undefined;
+    // Use MEDIAN transfer time (robust to outlier zones like Khao Lak/Ko Yao)
+    let medianTransfer: number | undefined;
+    if (transferMap.size > 0) {
+      const sorted = [...transferMap.values()].sort((a, b) => a - b);
+      medianTransfer = sorted[Math.floor(sorted.length / 2)];
+    }
 
-    const filterResult = applyHardFilters(exp, { ...filterCtx, transferMinutes: avgTransfer });
+    const filterResult = applyHardFilters(exp, { ...filterCtx, transferMinutes: medianTransfer });
     if (filterResult) {
       filtered.push({ id: exp.id, reason: filterResult });
       continue;
@@ -160,7 +163,7 @@ export function rank(
       rainSlots,
       requestSlot: request.timeBucket,
       season: ctx?.season.season,
-      transferMinutes: avgTransfer,
+      transferMinutes: medianTransfer,
       partyEnergy: request.energy,
       youngestAge: request.youngestAge,
     });
@@ -193,7 +196,7 @@ export function rank(
       attributes: exp.attributes,
       mobilityNote,
       bookingConstraints,
-      transferMinutes: avgTransfer ?? null,
+      transferMinutes: medianTransfer ?? null,
       alternatives: [],
       venueKey: vk,
     });

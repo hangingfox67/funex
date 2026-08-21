@@ -19,6 +19,7 @@ These are the rules that keep V1 simple and V2 possible. Every module below obey
 7. **Ungated doors first.** The web/GEO surface ships before and independently of any reviewed app directory.
 8. **Directive 8 is code, not culture.** The rank package is blind to rails — lint-enforced, CI fails otherwise.
 9. **Viator-tomorrow test.** Build nothing whose value is re-displaying a single provider's fields. Value must come from transformation, corroboration, composition, or context they can't serve. If Viator could ship the same feature by adding a column, it's not defensible.
+10. **Zones are physical, catalogs are provider-scoped, brands are how travelers speak.** Promotion of a zone-cluster to its own brand is config, never code. A zone is geography (beach, town, island). A catalog source is a provider + destination ID. A brand is the serving identity (domain, app name, copy tone).
 
 ---
 

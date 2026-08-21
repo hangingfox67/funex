@@ -21,7 +21,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(__dirname, '..', '..', '..');
 
 interface DestConfig {
-  zones: Record<string, { center: [number, number]; name: string; kind: string }>;
+  zones: Record<string, { center: [number, number]; name: string; kind: string; ferry_crossing_minutes?: number }>;
   exposed_to: Record<string, { direction: number; label: string }>;
   season: { high: string[]; shoulder: string[]; low: string[] };
   traffic_factors: Record<string, { morning: number; midday: number; evening: number }>;
@@ -80,6 +80,7 @@ export async function context(
       slug,
       lat: z.center[1],
       lng: z.center[0],
+      ferryCrossingMinutes: z.ferry_crossing_minutes,
     }));
     cachedMatrix = await buildTravelMatrix(
       zoneCenters,
