@@ -15,6 +15,7 @@ describe('Rail router (A2)', () => {
         '12345P1',
         's_test-session-123',
         'exp_170728P24',
+        'Phuket Phi Phi Island Tour with Lunch by Speedboat',
       );
       expect(result.url).toContain('sid=s_test-session-123');
       expect(result.url).toContain('12345P1');
@@ -29,6 +30,7 @@ describe('Rail router (A2)', () => {
         '12345P1',
         's_campaign-test',
         'exp_170728P24',
+        'Test Tour Title',
       );
       expect(result.url).toContain('campaign=s_campaign-test');
     });
@@ -39,8 +41,23 @@ describe('Rail router (A2)', () => {
         '12345P1',
         's_test-session-123',
         'exp_170728P24',
+        'Phuket Phi Phi Island Tour with Lunch by Speedboat',
       );
       expect(result.redirectUrl).toBe('/r/s_test-session-123/exp_170728P24');
+    });
+
+    it('uses canonical Viator URL format with title slug and d349 prefix', () => {
+      const result = buildBookingUrl(
+        { provider: 'viator', payoutModel: 'affiliate', rate: 0.08 },
+        '399004P1',
+        's_test',
+        'exp_399004P1',
+        'Twilight Sea Canoe Tour with Sea Cave Kayaking in Phang Nga Bay',
+      );
+      // Must include: /tours/Phuket/{Slug}/d349-{productCode}
+      expect(result.url).toContain('/tours/Phuket/Twilight-Sea-Canoe-Tour-with-Sea-Cave-Kayaking-in-Phang-Nga-Bay/d349-399004P1');
+      expect(result.url).toContain('sid=s_test');
+      expect(result.url).toContain('campaign=s_test');
     });
   });
 

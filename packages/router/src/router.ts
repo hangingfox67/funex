@@ -1,5 +1,5 @@
 import { eq, and } from 'drizzle-orm';
-import { rails, providerMappings, db as defaultDb, isFixture } from '@funex/graph';
+import { rails, providerMappings, experiences, db as defaultDb, isFixture } from '@funex/graph';
 
 export interface BookingUrlResult {
   url: string;
@@ -9,18 +9,35 @@ export interface BookingUrlResult {
   rate: number;
 }
 
+const PHUKET_DEST_ID = '349';
+
+/**
+ * Generate a Viator-compatible URL slug from a product title.
+ * E.g. "Twilight Sea Canoe Tour with Sea Cave Kayaking" →
+ *      "Twilight-Sea-Canoe-Tour-with-Sea-Cave-Kayaking"
+ */
+function titleToSlug(title: string): string {
+  return title
+    .replace(/[^a-zA-Z0-9\s-]/g, '')  // remove special chars
+    .replace(/\s+/g, '-')              // spaces → hyphens
+    .replace(/-+/g, '-')               // collapse multiple hyphens
+    .replace(/^-|-$/g, '')             // trim leading/trailing
+    .substring(0, 100);                // cap length
+}
+
 /**
  * Build a session-tagged booking URL for a given provider product.
- * V1: Viator only. URL format follows Viator deep-link pattern.
+ * V1: Viator only. Uses canonical URL: /tours/Phuket/{Slug}/d{destId}-{productCode}
  */
 export function buildBookingUrl(
   rail: { provider: string; payoutModel: string; rate: number },
   providerProductId: string,
   sessionId: string,
   experienceId: string,
+  title: string,
 ): BookingUrlResult {
-  // V1: Viator affiliate deep link with campaign=sid for attribution
-  const url = `https://www.viator.com/tours/Phuket/${providerProductId}?sid=${sessionId}&pid=P00000000&campaign=${sessionId}`;
+  const slug = titleToSlug(title);
+  const url = `https://www.viator.com/tours/Phuket/${slug}/d${PHUKET_DEST_ID}-${providerProductId}?sid=${sessionId}&pid=P00000000&campaign=${sessionId}`;
   const redirectUrl = `/r/${sessionId}/${experienceId}`;
   return {
     url,
@@ -41,10 +58,8 @@ export async function routeExperience(
   sessionId: string,
   db: typeof defaultDb = defaultDb,
 ): Promise<BookingUrlResult | null> {
-  // Fixture products must never be routed to agents — they don't exist on Viator.
   if (isFixture(experienceId)) return null;
 
-  // Find active rails for this experience, ordered by priority desc
   const activeRails = await db
     .select()
     .from(rails)
@@ -53,10 +68,8 @@ export async function routeExperience(
 
   if (activeRails.length === 0) return null;
 
-  // Pick the best rail (highest priority; V1: there's only one)
   const bestRail = activeRails[activeRails.length - 1];
 
-  // Resolve provider product ID
   const mappings = await db
     .select()
     .from(providerMappings)
@@ -69,5 +82,13 @@ export async function routeExperience(
 
   if (mappings.length === 0) return null;
 
-  return buildBookingUrl(bestRail, mappings[0].providerProductId, sessionId, experienceId);
+  // Get title for slug generation
+  const [exp] = await db
+    .select({ title: experiences.title })
+    .from(experiences)
+    .where(eq(experiences.id, experienceId));
+
+  const title = exp?.title ?? providerProductId;
+
+  return buildBookingUrl(bestRail, mappings[0].providerProductId, sessionId, experienceId, title);
 }

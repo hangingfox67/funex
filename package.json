@@ -17,6 +17,7 @@
     "enrich:collect": "pnpm --filter @funex/enrich collect",
     "ops:health": "bash scripts/ops-health.sh",
     "ops:propose-demand": "tsx scripts/propose-demand-batch.ts",
+    "ops:link-health": "NODE_OPTIONS='--max-old-space-size=256' tsx scripts/link-health.ts",
     "test": "vitest run",
     "test:watch": "vitest"
   },
