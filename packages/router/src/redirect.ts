@@ -1,5 +1,6 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import type { EventWriter } from '@funex/telemetry';
+import { ensureSession } from '@funex/telemetry';
 import { routeExperience } from './router.js';
 import type { db as Db } from '@funex/graph';
 
@@ -38,14 +39,21 @@ export async function redirectPlugin(
         return reply.code(404).send({ error: 'Experience not routable' });
       }
 
-      // Log click event before redirecting
-      await eventWriter.log(sessionId, 'click', {
-        experienceId,
-        provider: result.provider,
-        url: result.url,
-      });
+      // Redirect first — never let logging failure block the user
+      const redirectUrl = result.url;
+      reply.redirect(redirectUrl, 302);
 
-      return reply.redirect(result.url, 302);
+      // Best-effort logging (after redirect sent)
+      try {
+        await ensureSession(db, sessionId);
+        await eventWriter.log(sessionId, 'click', {
+          experienceId,
+          provider: result.provider,
+          url: redirectUrl,
+        });
+      } catch {
+        // Logging failure must never block redirects
+      }
     },
   );
 }
