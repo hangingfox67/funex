@@ -17,7 +17,9 @@ describe('Rail router (A2)', () => {
         'exp_170728P24',
         'Phuket Phi Phi Island Tour with Lunch by Speedboat',
       );
-      expect(result.url).toContain('sid=s_test-session-123');
+      expect(result.url).toContain('campaign=s_test-session-123');
+      expect(result.url).toContain('pid=P00314731');
+      expect(result.url).toContain('mcid=42383');
       expect(result.url).toContain('12345P1');
       expect(result.provider).toBe('viator');
       expect(result.payoutModel).toBe('affiliate');
@@ -56,7 +58,7 @@ describe('Rail router (A2)', () => {
       );
       // Must include: /tours/Phuket/{Slug}/d349-{productCode}
       expect(result.url).toContain('/tours/Phuket/Twilight-Sea-Canoe-Tour-with-Sea-Cave-Kayaking-in-Phang-Nga-Bay/d349-399004P1');
-      expect(result.url).toContain('sid=s_test');
+      expect(result.url).toContain('campaign=s_test');
       expect(result.url).toContain('campaign=s_test');
     });
   });
@@ -79,7 +81,7 @@ describe('Rail router (A2)', () => {
       const expId = rows[0].id as string;
       const result = await routeExperience(expId, 's_router-test', db);
       expect(result).not.toBeNull();
-      expect(result!.url).toContain('sid=s_router-test');
+      expect(result!.url).toContain('campaign=s_router-test');
       expect(result!.url).toContain('viator.com');
       expect(result!.provider).toBe('viator');
       expect(result!.redirectUrl).toBe(`/r/s_router-test/${expId}`);
@@ -108,7 +110,7 @@ describe('Rail router (A2)', () => {
       expect(isFixture(expId)).toBe(false);
       const result = await routeExperience(expId, 's_real-test', db);
       expect(result).not.toBeNull();
-      expect(result!.url).toContain('sid=s_real-test');
+      expect(result!.url).toContain('campaign=s_real-test');
       expect(result!.redirectUrl).toBe(`/r/s_real-test/${expId}`);
     });
 

@@ -10,6 +10,7 @@ export interface BookingUrlResult {
 }
 
 const PHUKET_DEST_ID = '349';
+const VIATOR_PID = process.env.VIATOR_PID ?? 'P00314731';
 
 /**
  * Generate a Viator-compatible URL slug from a product title.
@@ -37,7 +38,7 @@ export function buildBookingUrl(
   title: string,
 ): BookingUrlResult {
   const slug = titleToSlug(title);
-  const url = `https://www.viator.com/tours/Phuket/${slug}/d${PHUKET_DEST_ID}-${providerProductId}?sid=${sessionId}&pid=P00000000&campaign=${sessionId}`;
+  const url = `https://www.viator.com/tours/Phuket/${slug}/d${PHUKET_DEST_ID}-${providerProductId}?pid=${VIATOR_PID}&mcid=42383&medium=api&campaign=${sessionId}`;
   const redirectUrl = `/r/${sessionId}/${experienceId}`;
   return {
     url,
