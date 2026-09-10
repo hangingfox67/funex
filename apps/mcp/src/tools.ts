@@ -56,7 +56,7 @@ export async function handleSearchExperiences(params: Record<string, unknown>): 
   const destination = ((params.destination as string) ?? 'phuket').toLowerCase().trim();
   const date = params.date as string;
   const staying = params.staying as string;
-  const party = params.party as { role: string; age?: number; notes?: string }[];
+  const party = params.party as { role: string; age?: number }[];
 
   // ── Unsupported destination: graceful decline, never an error ──
   if (!SUPPORTED_DESTINATIONS.includes(destination)) {
