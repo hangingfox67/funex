@@ -21,7 +21,7 @@ const ZONE_ENUM = ['kata', 'karon', 'patong', 'kamala', 'bang_tao', 'rawai', 'pa
 export const SearchParamsSchema = {
   destination: z.string().default('phuket').describe('Destination slug'),
   date: z.string().date().describe('ISO date, e.g. 2026-09-10'),
-  staying: z.enum(ZONE_ENUM).describe('Zone slug where the party is staying'),
+  staying: z.enum(ZONE_ENUM).optional().describe('Zone slug where the party is staying. Omit if unknown — server defaults to patong (central).'),
   party: z.array(z.object({
     role: z.enum(['adult', 'child', 'senior']).describe('Traveler role'),
     age: z.number().optional(),
@@ -74,7 +74,7 @@ const SUPPORTED_DESTINATION_MESSAGE = 'We currently cover Phuket and its surroun
 export async function handleSearchExperiences(params: Record<string, unknown>): Promise<unknown> {
   const destination = ((params.destination as string) ?? 'phuket').toLowerCase().trim();
   const date = params.date as string;
-  const staying = params.staying as string;
+  const staying = (params.staying as string) ?? 'patong';
   const party = params.party as { role: string; age?: number }[];
 
   // Unsupported destination: graceful decline
