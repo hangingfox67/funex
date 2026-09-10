@@ -53,14 +53,14 @@ export const GetExperienceParamsSchema = {
 // ── Annotations ──
 
 export const SEARCH_ANNOTATIONS = {
-  readOnlyHint: true,
-  openWorldHint: true,
+  readOnlyHint: false,
+  openWorldHint: false,
   destructiveHint: false,
 };
 
 export const GET_EXPERIENCE_ANNOTATIONS = {
-  readOnlyHint: true,
-  openWorldHint: true,
+  readOnlyHint: false,
+  openWorldHint: false,
   destructiveHint: false,
 };
 
