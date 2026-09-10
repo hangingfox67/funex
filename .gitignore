@@ -4,3 +4,14 @@ dist/
 *.local
 .DS_Store
 .turbo
+
+# Enrichment data (contains Viator supplier content — not for public repo)
+packages/enrich/diffs/*.json
+packages/enrich/diffs/*.batch.json
+packages/enrich/diffs/viator-metadata.json
+
+# Generated dashboard (contains session IDs)
+packages/telemetry/dashboard.md
+
+# Local env
+.env
