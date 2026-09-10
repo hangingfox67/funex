@@ -31,7 +31,6 @@ export const SearchParamsSchema = {
     pregnant: z.boolean().optional().describe('Party includes pregnant traveler'),
     mobility: z.enum(['limited', 'moderate', 'full']).optional().describe('Maximum mobility level the party can handle'),
     motion_comfort: z.enum(['low', 'normal']).optional().describe('low = avoid rough seas, speedboats, bumpy rides. Use this instead of free-text health notes.'),
-    max_transfer_minutes: z.number().optional().describe('Maximum acceptable one-way transfer time in minutes'),
   }).optional().describe('Structured safety/comfort constraints. Translate traveler health and comfort needs into these flags rather than free text.'),
   energy: z.enum(['low', 'moderate', 'high']).optional().describe('Party energy level'),
   time_slot: z.enum(['morning', 'midday', 'evening']).optional().describe('Preferred time of day'),
@@ -115,7 +114,6 @@ export async function handleSearchExperiences(params: Record<string, unknown>): 
     pregnant?: boolean;
     mobility?: 'limited' | 'moderate' | 'full';
     motion_comfort?: 'low' | 'normal';
-    max_transfer_minutes?: number;
   } | undefined;
 
   const ages = party.filter((p) => p.age !== undefined).map((p) => p.age!);
@@ -124,7 +122,7 @@ export async function handleSearchExperiences(params: Record<string, unknown>): 
   const requirePregnantOk = constraints?.pregnant ?? false;
   const maxMobility = constraints?.mobility;
   const motionComfort = constraints?.motion_comfort;
-  const maxTransferMinutes = constraints?.max_transfer_minutes;
+  // Transfer penalty is automatic ranking behavior — no public param
 
   const safetyFiltersActive = !!(requireNonSwimmerOk || requirePregnantOk || maxMobility);
 
@@ -155,7 +153,7 @@ export async function handleSearchExperiences(params: Record<string, unknown>): 
     requirePregnantOk: requirePregnantOk || undefined,
     budgetCents: budgetThb ? budgetThb * 100 : undefined,
     maxDurationMinutes: maxDuration,
-    maxTransferMinutes: maxTransferMinutes,
+    // maxTransferMinutes: automatic via transfer-ratio penalty, no public param
     energy: energy as 'low' | 'moderate' | 'high' | undefined,
     timeBucket: timeSlot,
     partySize: party.length,
