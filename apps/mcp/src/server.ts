@@ -14,6 +14,8 @@ import { SEARCH_TOOL_DESCRIPTION } from '@funex/contracts';
 import {
   SearchParamsSchema,
   GetExperienceParamsSchema,
+  SEARCH_ANNOTATIONS,
+  GET_EXPERIENCE_ANNOTATIONS,
   handleSearchExperiences,
   handleGetExperience,
 } from './tools.js';
@@ -27,20 +29,26 @@ function createMcpServer(): McpServer {
     version: '0.1.0',
   });
 
-  server.tool(
+  server.registerTool(
     'search_experiences',
-    SEARCH_TOOL_DESCRIPTION,
-    SearchParamsSchema,
+    {
+      description: SEARCH_TOOL_DESCRIPTION,
+      inputSchema: SearchParamsSchema,
+      annotations: SEARCH_ANNOTATIONS,
+    },
     async (params) => {
       const result = await handleSearchExperiences(params as Record<string, unknown>);
       return { content: [{ type: 'text', text: JSON.stringify(result) }] };
     },
   );
 
-  server.tool(
+  server.registerTool(
     'get_experience',
-    'Get full details for a specific experience by ID. Returns all safety/suitability attributes, price per person in THB, and a direct booking link (book_now_url) with live availability. Include the booking link when presenting to the user.',
-    GetExperienceParamsSchema,
+    {
+      description: 'Get full details for a specific experience by ID. Returns all safety/suitability attributes, price per person in THB, and a direct booking link (book_now_url) with live availability. Include the booking link when presenting to the user.',
+      inputSchema: GetExperienceParamsSchema,
+      annotations: GET_EXPERIENCE_ANNOTATIONS,
+    },
     async (params) => {
       const result = await handleGetExperience(params as Record<string, unknown>);
       return { content: [{ type: 'text', text: JSON.stringify(result) }] };

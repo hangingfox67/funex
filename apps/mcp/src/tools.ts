@@ -13,14 +13,17 @@ import { toServedAttribute, SEARCH_TOOL_DESCRIPTION } from '@funex/contracts';
 
 const eventWriter = createEventWriter(db);
 
+// ── Zone enum ──
+const ZONE_ENUM = ['kata', 'karon', 'patong', 'kamala', 'bang_tao', 'rawai', 'panwa', 'old_town', 'mai_khao', 'airport', 'natai', 'khao_lak', 'ko_yao'] as const;
+
 // ── Zod schemas for MCP tool params ──
 
 export const SearchParamsSchema = {
   destination: z.string().default('phuket').describe('Destination slug'),
-  date: z.string().describe('ISO date, e.g. 2026-08-20'),
-  staying: z.string().describe('Zone slug: kata, karon, patong, bang_tao, panwa, old_town, airport'),
+  date: z.string().date().describe('ISO date, e.g. 2026-09-10'),
+  staying: z.enum(ZONE_ENUM).describe('Zone slug where the party is staying'),
   party: z.array(z.object({
-    role: z.string().describe('adult, child, senior'),
+    role: z.enum(['adult', 'child', 'senior']).describe('Traveler role'),
     age: z.number().optional(),
   })).min(1).describe('Travel party members — ages help filter bookability and suitability'),
   constraints: z.object({
@@ -28,6 +31,7 @@ export const SearchParamsSchema = {
     pregnant: z.boolean().optional().describe('Party includes pregnant traveler'),
     mobility: z.enum(['limited', 'moderate', 'full']).optional().describe('Maximum mobility level the party can handle'),
     motion_comfort: z.enum(['low', 'normal']).optional().describe('low = avoid rough seas, speedboats, bumpy rides. Use this instead of free-text health notes.'),
+    max_transfer_minutes: z.number().optional().describe('Maximum acceptable one-way transfer time in minutes'),
   }).optional().describe('Structured safety/comfort constraints. Translate traveler health and comfort needs into these flags rather than free text.'),
   energy: z.enum(['low', 'moderate', 'high']).optional().describe('Party energy level'),
   time_slot: z.enum(['morning', 'midday', 'evening']).optional().describe('Preferred time of day'),
@@ -47,10 +51,26 @@ export const GetExperienceParamsSchema = {
   experience_id: z.string().describe('Experience ID (e.g. exp_170728P24)'),
 };
 
-// ── Handlers ──
+// ── Annotations ──
+
+export const SEARCH_ANNOTATIONS = {
+  readOnlyHint: true,
+  openWorldHint: true,
+  destructiveHint: false,
+};
+
+export const GET_EXPERIENCE_ANNOTATIONS = {
+  readOnlyHint: true,
+  openWorldHint: true,
+  destructiveHint: false,
+};
+
+// ── Supported destinations ──
 
 const SUPPORTED_DESTINATIONS = ['phuket'];
 const SUPPORTED_DESTINATION_MESSAGE = 'We currently cover Phuket and its surroundings (Phang Nga Bay, Khao Lak, Ko Yao).';
+
+// ── Handlers ──
 
 export async function handleSearchExperiences(params: Record<string, unknown>): Promise<unknown> {
   const destination = ((params.destination as string) ?? 'phuket').toLowerCase().trim();
@@ -58,10 +78,10 @@ export async function handleSearchExperiences(params: Record<string, unknown>): 
   const staying = params.staying as string;
   const party = params.party as { role: string; age?: number }[];
 
-  // ── Unsupported destination: graceful decline, never an error ──
+  // Unsupported destination: graceful decline
   if (!SUPPORTED_DESTINATIONS.includes(destination)) {
     const sessionId = createSessionId();
-    await ensureSession(db, sessionId); // no destination_slug — it doesn't exist in our DB
+    await ensureSession(db, sessionId);
     await eventWriter.log(sessionId, 'demand.unsupported_destination', {
       requestedDestination: destination,
     });
@@ -79,6 +99,7 @@ export async function handleSearchExperiences(params: Record<string, unknown>): 
       catalogBreadth: { totalDestination: 0, enriched: 0, basic: 0 },
     };
   }
+
   const energy = params.energy as string | undefined;
   const timeSlot = params.time_slot as 'morning' | 'midday' | 'evening' | undefined;
   const budgetThb = params.budget_thb as number | undefined;
@@ -88,12 +109,13 @@ export async function handleSearchExperiences(params: Record<string, unknown>): 
   const exclude = params.exclude as { categories?: string[]; activity_tags?: string[]; exp_ids?: string[] } | undefined;
   const seen = params.seen as string[] | undefined;
 
-  // Read structured constraints (no free-text health parsing)
+  // Read structured constraints
   const constraints = params.constraints as {
     non_swimmer?: boolean;
     pregnant?: boolean;
     mobility?: 'limited' | 'moderate' | 'full';
     motion_comfort?: 'low' | 'normal';
+    max_transfer_minutes?: number;
   } | undefined;
 
   const ages = party.filter((p) => p.age !== undefined).map((p) => p.age!);
@@ -102,14 +124,13 @@ export async function handleSearchExperiences(params: Record<string, unknown>): 
   const requirePregnantOk = constraints?.pregnant ?? false;
   const maxMobility = constraints?.mobility;
   const motionComfort = constraints?.motion_comfort;
+  const maxTransferMinutes = constraints?.max_transfer_minutes;
 
   const safetyFiltersActive = !!(requireNonSwimmerOk || requirePregnantOk || maxMobility);
 
-  // Create session
   const sessionId = createSessionId();
   await ensureSession(db, sessionId, destination);
 
-  // Get context
   let ctx: ContextSnapshot | null = null;
   try {
     ctx = await context(destination, staying, date);
@@ -117,7 +138,6 @@ export async function handleSearchExperiences(params: Record<string, unknown>): 
     console.error('Context fetch failed:', (err as Error).message);
   }
 
-  // Search
   const { results: expRows, stats, resultQuality, resultQualityReason,
     excludedUnverifiedCount, excludedUnverifiedIds } = await searchExperiences({
     destinationSlug: destination,
@@ -126,7 +146,6 @@ export async function handleSearchExperiences(params: Record<string, unknown>): 
     db,
   });
 
-  // Rank
   const rankRequest: RankRequest = {
     stayingZone: staying,
     date,
@@ -136,6 +155,7 @@ export async function handleSearchExperiences(params: Record<string, unknown>): 
     requirePregnantOk: requirePregnantOk || undefined,
     budgetCents: budgetThb ? budgetThb * 100 : undefined,
     maxDurationMinutes: maxDuration,
+    maxTransferMinutes: maxTransferMinutes,
     energy: energy as 'low' | 'moderate' | 'high' | undefined,
     timeBucket: timeSlot,
     partySize: party.length,
@@ -152,7 +172,6 @@ export async function handleSearchExperiences(params: Record<string, unknown>): 
 
   const ranked = rank(expRows, ctx, rankRequest);
 
-  // Resolve booking URLs
   const candidates = await Promise.all(ranked.candidates.map(async (c) => {
     const booking = await routeExperience(c.experienceId, sessionId, db);
     const servedAttrs = c.attributes
@@ -191,7 +210,6 @@ export async function handleSearchExperiences(params: Record<string, unknown>): 
     };
   }));
 
-  // Log demand events
   const basicIds = ranked.candidates
     .filter((c) => c.enrichmentTier === 'basic')
     .map((c) => c.experienceId);
@@ -202,7 +220,9 @@ export async function handleSearchExperiences(params: Record<string, unknown>): 
     await logSuppressedDemand(eventWriter, sessionId, excludedUnverifiedIds, {});
   }
 
-  // Build refine hints
+  let finalResultQuality = resultQuality;
+  let finalResultQualityReason = resultQualityReason;
+
   const refine: Record<string, unknown> = {
     totalMatches: ranked.totalQualified,
   };
@@ -214,10 +234,6 @@ export async function handleSearchExperiences(params: Record<string, unknown>): 
     if (!maxDuration) hints.push('max_duration_minutes');
     if (hints.length > 0) refine.canNarrowBy = hints;
   }
-
-  // Result quality finalization
-  let finalResultQuality = resultQuality;
-  let finalResultQualityReason = resultQualityReason;
 
   const response = {
     sessionId,
@@ -240,7 +256,7 @@ export async function handleSearchExperiences(params: Record<string, unknown>): 
     },
   };
 
-  // Log search event — redacted: constraint flags only, never verbatim health text
+  // Log — redacted: constraint flags only, never verbatim health text
   await eventWriter.log(sessionId, 'search', {
     destination, zone: staying, date,
     partySize: party.length,
@@ -270,7 +286,6 @@ export async function handleGetExperience(params: Record<string, unknown>): Prom
   const [exp] = await db.select().from(experiences).where(eq(experiences.id, expId));
   if (!exp) return { error: 'Experience not found' };
 
-  // Load attributes
   const attrs = await db.select().from(attributes).where(eq(attributes.experienceId, expId));
   const servedAttrs = attrs
     .filter((a) => !a.key.startsWith('viator.') && a.key !== 'activity_tags')
@@ -282,7 +297,6 @@ export async function handleGetExperience(params: Record<string, unknown>): Prom
       evidence: a.evidence as { source: string; pointer: string; inference_basis?: string; gate_status?: string }[],
     }));
 
-  // Booking URL
   const sessionId = createSessionId();
   await ensureSession(db, sessionId);
   const booking = await routeExperience(expId, sessionId, db);
