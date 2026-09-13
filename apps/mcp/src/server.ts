@@ -77,6 +77,10 @@ async function main() {
   const { registerWebAuth } = await import('./web-auth.js');
   registerWebAuth(app);
 
+  // Web onboarding (parse → form → results)
+  const { registerOnboarding } = await import('./web-onboard.js');
+  registerOnboarding(app);
+
   app.get('/health', async () => ({ status: 'ok', version: '0.1.0' }));
   app.post('/api/search', async (request) => handleSearchExperiences(request.body as Record<string, unknown>));
   app.post('/api/experience', async (request) => handleGetExperience(request.body as Record<string, unknown>));
