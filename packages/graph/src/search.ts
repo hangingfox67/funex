@@ -59,11 +59,17 @@ export async function searchExperiences(opts: {
   const db = opts.db ?? defaultDb;
   const limit = opts.limit ?? 50;
 
-  // Get enriched experience IDs (those with at least one attribute row)
+  // Get enriched experience IDs — those with LLM-extracted attributes,
+  // NOT just viator.* verbatim fields (which exist on all 1,891 products)
   const enrichedIds = await db
     .selectDistinct({ experienceId: attributes.experienceId })
     .from(attributes)
-    .where(not(like(attributes.experienceId, `${FIXTURE_ID_PREFIX}%`)));
+    .where(and(
+      not(like(attributes.experienceId, `${FIXTURE_ID_PREFIX}%`)),
+      not(like(attributes.key, 'viator.%')),
+      not(eq(attributes.key, 'activity_tags')),
+      not(eq(attributes.key, 'min_travelers_per_booking')),
+    ));
   const enrichedSet = new Set(enrichedIds.map((r) => r.experienceId));
 
   // Build base conditions
@@ -187,7 +193,10 @@ export async function searchExperiences(opts: {
       count(*) FILTER (WHERE id NOT LIKE ${FIXTURE_ID_PREFIX + '%'}) AS total,
       count(*) FILTER (WHERE id NOT LIKE ${FIXTURE_ID_PREFIX + '%'}
         AND id IN (SELECT DISTINCT experience_id FROM attribute
-                   WHERE experience_id NOT LIKE ${FIXTURE_ID_PREFIX + '%'})) AS enriched
+                   WHERE experience_id NOT LIKE ${FIXTURE_ID_PREFIX + '%'}
+                     AND key NOT LIKE 'viator.%'
+                     AND key != 'activity_tags'
+                     AND key != 'min_travelers_per_booking')) AS enriched
     FROM experience
     WHERE destination_slug = ${opts.destinationSlug}
   `);

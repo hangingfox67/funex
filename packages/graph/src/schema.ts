@@ -126,13 +126,46 @@ export const rails = pgTable('rail', {
   ),
 }));
 
+// ── W1: User (identity layer, shared with MCP auth path) ──
+
+export const users = pgTable('funex_user', {
+  id: text('id').primaryKey(), // u_{uuid}
+  email: text('email').notNull(),
+  name: text('name'),
+  picture: text('picture'),
+  googleId: text('google_id').notNull(),
+  destinationSlug: text('destination_slug').references(() => destinations.slug),
+  profile: jsonb('profile').$type<{
+    party?: { role: string; age?: number }[];
+    staying?: string;
+    tripDates?: { from: string; to: string };
+    constraints?: {
+      nonSwimmer?: boolean;
+      pregnant?: boolean;
+      mobility?: 'limited' | 'moderate' | 'full';
+      motionComfort?: 'low' | 'normal';
+    };
+    interests?: string[];
+    budgetThb?: number;
+  }>().default({}),
+  weeklyTurnsUsed: integer('weekly_turns_used').notNull().default(0),
+  weeklyTurnsResetAt: timestamp('weekly_turns_reset_at').notNull().defaultNow(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+}, (table) => ({
+  googleIdx: uniqueIndex('user_google_id_idx').on(table.googleId),
+  emailIdx: index('user_email_idx').on(table.email),
+}));
+
 // ── M9: Session ──
 
 export const sessions = pgTable('session', {
   id: text('id').primaryKey(),
   destinationSlug: text('destination_slug').references(() => destinations.slug),
+  userId: text('user_id').references(() => users.id),
+  channel: text('channel').default('agent'), // 'agent' | 'web'
   createdAt: timestamp('created_at').notNull().defaultNow(),
-  claimedBy: text('claimed_by'),
+  claimedBy: text('claimed_by'), // legacy — userId is the canonical link
 });
 
 // ── M10: Event Log ──
