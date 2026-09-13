@@ -253,5 +253,28 @@ export function scoreTier(
     if (capOrder[tier] > capOrder[tierCapped]) tier = tierCapped;
   }
 
+  // ── Review quality tiebreaker (within-tier only, never reorders across tiers) ──
+  // Bayesian smoothed: (n * avg + C * prior) / (n + C)
+  // C = 20 (pseudocounts), prior = 4.5 (Phuket activity average)
+  // Max contribution: ±3 points (hard-capped)
+  const reviewCount = val('viator.review_count') as number | undefined;
+  const avgRating = val('viator.average_rating') as number | undefined;
+
+  if (reviewCount !== undefined && avgRating !== undefined && reviewCount > 0) {
+    const C = 20; // smoothing constant
+    const prior = 4.5;
+    const bayesian = (reviewCount * avgRating + C * prior) / (reviewCount + C);
+    // Map 3.0-5.0 range to -3..+3 tiebreaker
+    const tiebreaker = Math.max(-3, Math.min(3, (bayesian - 4.0) * 3));
+    score = Math.max(0, Math.min(100, score + tiebreaker));
+
+    if (reviewCount >= 50 && bayesian >= 4.5) {
+      reasons.push('crowd_validated');
+    }
+  }
+  if (reviewCount !== undefined && reviewCount < 10) {
+    reasons.push('limited_reviews');
+  }
+
   return { tier, score, reasons };
 }

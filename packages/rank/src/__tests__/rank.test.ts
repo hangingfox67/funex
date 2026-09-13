@@ -315,6 +315,32 @@ describe('Ranker (A5)', () => {
 
     expect(result.candidates.length).toBeGreaterThanOrEqual(1);
   });
+
+  // ── Review signal doesn't collapse portfolio diversity ──
+  it('review counts do not collapse portfolio to same blockbusters', () => {
+    const result = rank(allExperiences, ctx, {
+      stayingZone: 'kata',
+      date: '2026-08-20',
+      maxResults: 4,
+    });
+
+    // Must have 4 candidates from different activity types
+    expect(result.candidates.length).toBe(4);
+
+    // No two candidates share the same experienceId
+    const ids = new Set(result.candidates.map((c) => c.experienceId));
+    expect(ids.size).toBe(4);
+
+    // At least 2 different categories
+    const cats = new Set(result.candidates.map((c) => c.category));
+    expect(cats.size).toBeGreaterThanOrEqual(2);
+
+    // The top-5 review-count products (44720P2, 15484P1, 44720P1, etc.)
+    // must NOT fill all 4 slots — portfolio diversity beats review volume
+    const blockbusters = new Set(['exp_44720P2', 'exp_15484P1', 'exp_44720P1', 'exp_399004P1', 'exp_90546P39']);
+    const blockbusterCount = result.candidates.filter((c) => blockbusters.has(c.experienceId)).length;
+    expect(blockbusterCount).toBeLessThanOrEqual(2);
+  });
 });
 
 // ── Forced-weather fixtures (never depend on real weather) ──
