@@ -60,19 +60,19 @@ function onboardPage(prefill: Record<string, unknown>, prompt: string): string {
 <title>Plan Your Trip — Thailand Fun Experiences</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:system-ui,-apple-system,sans-serif;background:#fafafa;color:#333;font-size:16px}
-.header{background:#0f4a3e;color:#e8c66a;padding:14px 16px;font-size:1.1rem;font-weight:600}
-.card{background:#fff;margin:12px;border-radius:12px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
-.card h2{font-size:1rem;color:#0f4a3e;margin-bottom:4px}
-.card p{font-size:.85rem;color:#888;margin-bottom:12px}
-label{display:block;font-size:.85rem;font-weight:500;color:#555;margin-bottom:4px;margin-top:12px}
-select,input[type=text],input[type=number],input[type=date]{width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:1rem;background:#fff}
+body{font-family:'DM Sans',system-ui,-apple-system,sans-serif;background:#f8fafc;color:#1e293b;font-size:16px}
+.header{background:#082f49;color:#38bdf8;padding:14px 16px;font-size:1.1rem;font-weight:600;font-family:'DM Sans',sans-serif}
+.card{background:#fff;margin:12px;border-radius:12px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.card h2{font-size:1rem;color:#0c4a6e;margin-bottom:4px;font-weight:600}
+.card p{font-size:.85rem;color:#94a3b8;margin-bottom:12px}
+label{display:block;font-size:.85rem;font-weight:500;color:#475569;margin-bottom:4px;margin-top:12px}
+select,input[type=text],input[type=number],input[type=date]{width:100%;padding:10px;border:1px solid #e2e8f0;border-radius:8px;font-size:1rem;background:#fff;color:#1e293b}
 .check-row{display:flex;align-items:center;gap:8px;margin-top:8px}
-.check-row input[type=checkbox]{width:20px;height:20px}
-.check-row label{margin:0;font-size:.9rem;color:#333}
-.btn{display:block;width:100%;padding:14px;border:none;border-radius:10px;background:#1a6b5a;color:#fff;font-size:1rem;font-weight:600;cursor:pointer;margin-top:16px}
-.btn:active{background:#0f4a3e}
-.parsed{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:12px;margin-bottom:12px;font-size:.9rem;color:#166534}
+.check-row input[type=checkbox]{width:20px;height:20px;accent-color:#0d9488}
+.check-row label{margin:0;font-size:.9rem;color:#1e293b}
+.btn{display:block;width:100%;padding:14px;border:none;border-radius:10px;background:#0d9488;color:#fff;font-size:1rem;font-weight:600;cursor:pointer;margin-top:16px}
+.btn:active{background:#0c4a6e}
+.parsed{background:#e0f2fe;border:1px solid #7dd3fc;border-radius:8px;padding:12px;margin-bottom:12px;font-size:.9rem;color:#0c4a6e}
 </style></head><body>
 
 <div class="header">Thailand Fun Experiences</div>
@@ -229,43 +229,67 @@ export function registerOnboarding(app: FastifyInstance): void {
     const candidates = (r.candidates ?? []) as Record<string, unknown>[];
 
     // Render results
-    const cards = candidates.map((c: any) => `
-      <div class="card">
-        <div style="display:flex;justify-content:space-between;align-items:start">
-          <div>
-            <h2 style="font-size:1.05rem">${esc(c.title)}</h2>
-            <p style="margin:4px 0">${esc(c.category)} · ${c.durationMinutes ?? '?'} min · ${c.price_per_person_thb ?? '?'} THB/person</p>
+    const reasonLabels: Record<string, string> = {
+      sheltered_from_swell: '🌊 Sheltered bay',
+      dry_window_match: '☀️ Dry slot',
+      rain_safe: '🏠 Rain-proof',
+      rain_risk_afternoon: '🌧 Afternoon rain risk',
+      energy_match: '⚡ Energy match',
+      age_fit: '👶 Age-appropriate',
+      near_you: '📍 Nearby',
+      far_for_its_length: '🚕 Long transfer',
+      crowd_validated: '⭐ Highly rated',
+      group_fit: '👨‍👩‍👧‍👦 Group-friendly',
+      smooth_ride: '🛥 Smooth conditions',
+    };
+
+    const cards = candidates.map((c: any) => {
+      const tags = (c.reasons ?? []).slice(0, 4).map((r: string) =>
+        `<span style="display:inline-block;padding:3px 8px;border-radius:6px;font-size:.72rem;font-weight:500;background:#e0f2fe;color:#0c4a6e;margin-right:4px;margin-bottom:4px">${reasonLabels[r] ?? r}</span>`
+      ).join('');
+
+      return `
+      <div style="background:#fff;margin:12px;border-radius:14px;padding:18px;box-shadow:0 1px 4px rgba(0,0,0,.06)">
+        <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:8px">
+          <div style="flex:1">
+            <div style="font-size:1.05rem;font-weight:600;color:#0c4a6e;margin-bottom:2px">${esc(c.title)}</div>
+            <div style="font-size:.82rem;color:#94a3b8">${esc(c.category)} · ${c.durationMinutes ?? '?'} min · ${c.price_per_person_thb ?? '?'} THB/person</div>
           </div>
-          <span style="background:#0f4a3e;color:#fff;padding:3px 8px;border-radius:6px;font-size:.75rem;font-weight:600">${c.tier}</span>
+          <span style="background:${c.tier === 'excellent' ? '#0d9488' : c.tier === 'good' ? '#0369a1' : '#94a3b8'};color:#fff;padding:3px 10px;border-radius:8px;font-size:.72rem;font-weight:600;flex-shrink:0;margin-left:8px">${c.tier}</span>
         </div>
-        <p style="font-size:.82rem;color:#666;margin-top:8px">${(c.reasons ?? []).join(' · ')}</p>
-        ${c.mobilityNote ? `<p style="font-size:.8rem;color:#888;margin-top:4px">Mobility: ${esc(c.mobilityNote).substring(0, 100)}</p>` : ''}
-        ${c.book_now_url ? `<a href="${esc(c.book_now_url)}" target="_blank" style="display:block;text-align:center;padding:10px;background:#1a6b5a;color:#fff;border-radius:8px;margin-top:10px;font-weight:500;text-decoration:none">Check availability & book</a>` : ''}
-      </div>
-    `).join('');
+        <div style="margin-bottom:8px">${tags}</div>
+        ${c.mobilityNote ? `<div style="font-size:.8rem;color:#475569;background:#f8fafc;padding:8px 10px;border-radius:8px;margin-bottom:8px">Mobility: ${esc(c.mobilityNote).substring(0, 120)}</div>` : ''}
+        ${c.book_now_url ? `<a href="${esc(c.book_now_url)}" target="_blank" style="display:block;text-align:center;padding:12px;background:#0d9488;color:#fff;border-radius:10px;font-weight:600;text-decoration:none;font-size:.95rem">Check availability and book</a>` : ''}
+        ${c.booking_note ? `<div style="text-align:center;font-size:.75rem;color:#94a3b8;margin-top:4px">${esc(c.booking_note)}</div>` : ''}
+      </div>`;
+    }).join('');
 
     const weather = (r.context as any)?.weather?.summary ?? '';
     const sea = (r.context as any)?.seaState?.summary ?? '';
+    const season = (r.context as any)?.season ?? '';
 
     reply.type('text/html').send(`<!DOCTYPE html>
 <html lang="en"><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
 <title>Your Activities — Thailand Fun Experiences</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:system-ui,-apple-system,sans-serif;background:#fafafa;color:#333;font-size:16px}
-.header{background:#0f4a3e;color:#e8c66a;padding:14px 16px;font-size:1.1rem;font-weight:600}
-.card{background:#fff;margin:12px;border-radius:12px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
-.card h2{font-size:1rem;color:#0f4a3e;margin-bottom:4px}
-.card p{font-size:.85rem;color:#888}
-.ctx{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px;margin:12px;font-size:.82rem;color:#166534}
-.back{display:block;text-align:center;padding:12px;color:#1a6b5a;font-size:.9rem;margin:12px}
+body{font-family:'DM Sans',system-ui,sans-serif;background:#f8fafc;color:#1e293b;font-size:16px}
+.header{background:#082f49;color:#38bdf8;padding:14px 16px;font-size:1.1rem;font-weight:600}
 </style></head><body>
 <div class="header">Thailand Fun Experiences</div>
-${weather || sea ? `<div class="ctx">${weather}${sea ? ' · ' + sea : ''}</div>` : ''}
-${cards || '<div class="card"><p>No activities match your criteria. Try adjusting your filters.</p></div>'}
-<a href="/web/onboard" class="back">← Adjust search</a>
+${weather || sea ? `<div style="background:#e0f2fe;border-bottom:1px solid #bae6fd;padding:12px 16px;display:flex;gap:16px;flex-wrap:wrap;font-size:.82rem;color:#0c4a6e">
+  ${weather ? `<span>🌤 ${weather.split('.')[0]}</span>` : ''}
+  ${sea ? `<span>🌊 ${sea.split('.')[0]}</span>` : ''}
+  ${season ? `<span>📅 ${season} season</span>` : ''}
+</div>` : ''}
+<div style="padding:8px 0">
+  <div style="padding:12px 16px;font-size:.85rem;color:#64748b">${candidates.length} activities matched your party</div>
+  ${cards || '<div style="background:#fff;margin:12px;border-radius:14px;padding:24px;text-align:center;color:#94a3b8">No activities match your criteria. Try adjusting your filters.</div>'}
+</div>
+<a href="/web/onboard" style="display:block;text-align:center;padding:14px;color:#0c4a6e;font-size:.9rem;font-weight:500;text-decoration:none">← Adjust search</a>
 </body></html>`);
   });
 }
