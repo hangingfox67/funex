@@ -26,7 +26,7 @@ const HOST = process.env.MCP_HOST ?? '0.0.0.0';
 function createMcpServer(): McpServer {
   const server = new McpServer({
     name: 'thailand-fun-experiences',
-    version: '0.1.0',
+    version: '1.0.1',
   });
 
   server.registerTool(
@@ -81,7 +81,7 @@ async function main() {
   const { registerOnboarding } = await import('./web-onboard.js');
   registerOnboarding(app);
 
-  app.get('/health', async () => ({ status: 'ok', version: '0.1.0' }));
+  app.get('/health', async () => ({ status: 'ok', version: '1.0.1' }));
   app.post('/api/search', async (request) => handleSearchExperiences(request.body as Record<string, unknown>));
   app.post('/api/experience', async (request) => handleGetExperience(request.body as Record<string, unknown>));
   app.get('/.well-known/openai-apps-challenge', async () => process.env.OPENAI_APPS_CHALLENGE_TOKEN ?? '');

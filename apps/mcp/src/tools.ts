@@ -96,17 +96,13 @@ export async function handleSearchExperiences(params: Record<string, unknown>): 
       requestedDestination: destination,
     });
     return {
-      sessionId,
       candidates: [],
       resultQuality: 'unsupported_destination',
       resultQualityReason: `${SUPPORTED_DESTINATION_MESSAGE} "${destination}" isn't supported yet.`,
-      enrichedCount: 0,
-      basicCount: 0,
-      excludedUnverifiedCount: 0,
       supportedDestinations: SUPPORTED_DESTINATIONS,
-      context: null,
+      conditions: null,
       refine: null,
-      catalogBreadth: { totalDestination: 0, enriched: 0, basic: 0 },
+      catalog: { total: 0, enriched: 0 },
     };
   }
 

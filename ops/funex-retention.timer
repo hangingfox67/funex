@@ -1,0 +1,10 @@
+[Unit]
+Description=Daily retention purge for Funex
+
+[Timer]
+OnCalendar=daily
+RandomizedDelaySec=3600
+Persistent=true
+
+[Install]
+WantedBy=timers.target

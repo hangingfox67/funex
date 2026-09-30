@@ -1,0 +1,13 @@
+# Add inside the global options block at the top of /etc/caddy/Caddyfile:
+#
+# {
+#   log {
+#     output file /var/log/caddy/access.log {
+#       roll_size 10mb
+#       roll_keep 14
+#       roll_keep_for 336h
+#     }
+#   }
+# }
+#
+# 336h = 14 days. Roll at 10MB, keep max 14 files for 14 days.

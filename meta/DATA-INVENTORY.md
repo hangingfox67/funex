@@ -53,6 +53,7 @@ Last updated: 2026-09-30. Every input field, stored field, log, cookie, outbound
 | candidates[].mobility_note | No — activity description | Accessibility info |
 | candidates[].booking_constraints | No — operator rules | Booking requirements |
 | candidates[].alternatives | No — related activities | Venue variants |
+| attributes[] (get_experience) | No — activity safety/suitability data | Detailed attribute list for one activity |
 | conditions.weather | No — forecast text | Environmental context |
 | conditions.sea | No — sea state text | Marine context |
 | conditions.season | No — "low"/"high" | Season label |

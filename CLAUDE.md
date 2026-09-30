@@ -73,6 +73,7 @@ A destination-agnostic experiences layer (Phuket data first) that AI agents quer
 4. No auth, no second rail, no scraping, no multi-destination code paths. `phuket.yaml` is the only place "phuket" appears outside fixtures.
 5. Serving responses stay under ~2k tokens for 8 candidates. If a field doesn't help the agent decide or book, it doesn't ship.
 6. Every outbound booking URL carries the session ID.
+7. **Data inventory rule.** Any change that adds a stored field, log entry, cookie, third-party data flow, tool parameter, or response field MUST update `/meta/DATA-INVENTORY.md` and `/privacy` (the live privacy policy) in the SAME commit. No exceptions. The retention-purge script must cover any new stored data.
 
 ## Personas (fixtures + benchmark + test suite, one artifact)
 

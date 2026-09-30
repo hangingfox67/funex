@@ -1,0 +1,13 @@
+[Unit]
+Description=Funex data retention purge
+After=network.target docker.service
+
+[Service]
+Type=oneshot
+User=daniel
+WorkingDirectory=/home/daniel/funex
+Environment=NVM_DIR=/home/daniel/.nvm
+ExecStart=/bin/bash -c 'source $NVM_DIR/nvm.sh && npx tsx scripts/retention-purge.ts'
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=funex-retention
