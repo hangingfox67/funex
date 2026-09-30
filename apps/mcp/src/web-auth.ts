@@ -130,15 +130,14 @@ export function registerWebAuth(app: FastifyInstance): void {
       picture: string;
     };
 
-    // Upsert user
+    // Upsert user — no picture stored (privacy minimization)
     const userId = `u_${crypto.randomUUID()}`;
     const rows = await client`
-      INSERT INTO funex_user (id, email, name, picture, google_id)
-      VALUES (${userId}, ${googleUser.email}, ${googleUser.name}, ${googleUser.picture}, ${googleUser.id})
+      INSERT INTO funex_user (id, email, name, google_id)
+      VALUES (${userId}, ${googleUser.email}, ${googleUser.name}, ${googleUser.id})
       ON CONFLICT (google_id) DO UPDATE SET
         email = EXCLUDED.email,
         name = EXCLUDED.name,
-        picture = EXCLUDED.picture,
         updated_at = now()
       RETURNING id
     `;
@@ -203,12 +202,12 @@ export function registerWebAuth(app: FastifyInstance): void {
 
     const body = request.body as Record<string, unknown>;
 
-    // Structured fields only — no free-text health storage
+    // Never store: pregnant, mobility, motion_comfort, non_swimmer
+    // Only: party (roles/ages), staying (zone), trip dates, interests, budget
     const profile = {
       party: body.party,
       staying: body.staying,
       tripDates: body.tripDates,
-      constraints: body.constraints,
       interests: body.interests,
       budgetThb: body.budgetThb,
     };
@@ -242,5 +241,25 @@ export function registerWebAuth(app: FastifyInstance): void {
     `;
 
     reply.send({ claimed: result.length > 0 });
+  });
+
+  // Delete account — self-serve
+  app.post('/auth/delete-account', async (request, reply) => {
+    const userId = getUserIdFromCookie(request);
+    if (!userId) {
+      reply.code(401).send({ error: 'Not authenticated' });
+      return;
+    }
+
+    // Anonymize claimed sessions (unlink, don't delete events — they're already anonymous)
+    await client`UPDATE session SET user_id = NULL, claimed_by = NULL WHERE user_id = ${userId}`;
+
+    // Delete user record
+    await client`DELETE FROM funex_user WHERE id = ${userId}`;
+
+    // Clear cookie
+    reply
+      .header('Set-Cookie', `${SESSION_COOKIE}=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax; Secure`)
+      .send({ deleted: true });
   });
 }

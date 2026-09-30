@@ -3,7 +3,9 @@
  * search_experiences + get_experience, anonymous, no auth.
  */
 import { z } from 'zod';
+import crypto from 'node:crypto';
 import { eq } from 'drizzle-orm';
+import postgres from 'postgres';
 import { db, searchExperiences, experiences, attributes, isFixture } from '@funex/graph';
 import { context, resetContextCache, type ContextSnapshot } from '@funex/context';
 import { rank, type RankRequest } from '@funex/rank';
@@ -12,6 +14,15 @@ import { createSessionId, ensureSession, createEventWriter, logDemand, logSuppre
 import { toServedAttribute, SEARCH_TOOL_DESCRIPTION } from '@funex/contracts';
 
 const eventWriter = createEventWriter(db);
+const rawClient = postgres(process.env.DATABASE_URL ?? 'postgresql://funex:funex@localhost:5432/funex');
+const SITE_ORIGIN = process.env.SITE_ORIGIN ?? 'https://thailandfunexperiences.com';
+
+/** Create an opaque booking token (no session/exp IDs in the URL). */
+async function createBookingToken(sessionId: string, experienceId: string): Promise<string> {
+  const token = crypto.randomBytes(12).toString('base64url');
+  await rawClient`INSERT INTO booking_token (token, session_id, experience_id) VALUES (${token}, ${sessionId}, ${experienceId})`;
+  return token;
+}
 
 // ── Zone enum ──
 const ZONE_ENUM = ['kata', 'karon', 'patong', 'kamala', 'bang_tao', 'rawai', 'panwa', 'old_town', 'mai_khao', 'airport', 'natai', 'khao_lak', 'ko_yao'] as const;
@@ -27,10 +38,10 @@ export const SearchParamsSchema = {
     age: z.number().optional(),
   })).min(1).describe('Travel party members — ages help filter bookability and suitability'),
   constraints: z.object({
-    non_swimmer: z.boolean().optional().describe('Party includes non-swimmers'),
-    pregnant: z.boolean().optional().describe('Party includes pregnant traveler'),
-    mobility: z.enum(['limited', 'moderate', 'full']).optional().describe('Maximum mobility level the party can handle'),
-    motion_comfort: z.enum(['low', 'normal']).optional().describe('low = avoid rough seas, speedboats, bumpy rides. Use this instead of free-text health notes.'),
+    non_swimmer: z.boolean().optional().describe('Optional. Used only to exclude unsuitable activities for this request. Not stored.'),
+    pregnant: z.boolean().optional().describe('Optional. Used only to exclude unsuitable activities for this request. Not stored.'),
+    mobility: z.enum(['limited', 'moderate', 'full']).optional().describe('Optional. Used only to exclude unsuitable activities for this request. Not stored.'),
+    motion_comfort: z.enum(['low', 'normal']).optional().describe('Optional. Low avoids rough seas and bumpy rides. Used only to filter this request. Not stored.'),
   }).optional().describe('Structured safety/comfort constraints. Translate traveler health and comfort needs into these flags rather than free text.'),
   energy: z.enum(['low', 'moderate', 'high']).optional().describe('Party energy level'),
   time_slot: z.enum(['morning', 'midday', 'evening']).optional().describe('Preferred time of day'),
@@ -182,29 +193,27 @@ export async function handleSearchExperiences(params: Record<string, unknown>): 
         evidence: a.evidence as { source: string; pointer: string; inference_basis?: string; gate_status?: string }[],
       }));
 
-    const bookNowUrl = booking
-      ? `https://thailandfunexperiences.com${booking.redirectUrl}`
-      : null;
+    // Opaque booking token — no session/exp IDs in the URL
+    let bookNowUrl: string | null = null;
+    if (booking) {
+      const token = await createBookingToken(sessionId, c.experienceId);
+      bookNowUrl = `${SITE_ORIGIN}/r/${token}`;
+    }
 
     return {
-      experienceId: c.experienceId,
+      experience_id: c.experienceId,
       title: c.title,
       category: c.category,
-      durationMinutes: c.durationMinutes,
+      duration_minutes: c.durationMinutes,
       price_per_person_thb: c.priceThb,
-      price_note: 'Price shown is per person in Thai Baht (THB). Final price confirmed at checkout.',
-      enrichmentTier: c.enrichmentTier,
-      portfolioRole: c.portfolioRole,
-      tier: c.tier,
+      price_note: 'Per person in THB. Final price at checkout.',
+      fit: c.tier,
       reasons: c.reasons,
-      attributes: servedAttrs,
       book_now_url: bookNowUrl,
-      booking_note: bookNowUrl
-        ? 'Bookable now via this link — live availability, hotel pickup options shown at checkout.'
-        : null,
-      mobilityNote: c.mobilityNote,
-      bookingConstraints: c.bookingConstraints,
-      alternatives: c.alternatives,
+      booking_note: bookNowUrl ? 'Live availability. Hotel pickup options at checkout.' : null,
+      mobility_note: c.mobilityNote,
+      booking_constraints: c.bookingConstraints.length > 0 ? c.bookingConstraints : undefined,
+      alternatives: c.alternatives.length > 0 ? c.alternatives : undefined,
     };
   }));
 
@@ -234,40 +243,28 @@ export async function handleSearchExperiences(params: Record<string, unknown>): 
   }
 
   const response = {
-    sessionId,
+    // No sessionId, no timestamps, no internal stats in the response
     candidates,
     resultQuality: finalResultQuality,
     resultQualityReason: finalResultQualityReason,
-    enrichedCount: candidates.filter((c) => c.enrichmentTier === 'enriched').length,
-    basicCount: candidates.filter((c) => c.enrichmentTier === 'basic').length,
-    excludedUnverifiedCount,
-    context: ctx ? {
-      weather: { summary: ctx.weather.summary, rain_buckets: ctx.weather.rain_buckets },
-      seaState: { classification: ctx.seaState.classification, summary: ctx.seaState.summary },
+    conditions: ctx ? {
+      weather: ctx.weather.summary,
+      sea: ctx.seaState.summary,
       season: ctx.season.season,
     } : undefined,
     refine,
-    catalogBreadth: {
-      totalDestination: stats.totalDestination,
+    catalog: {
+      total: stats.totalDestination,
       enriched: stats.enriched,
-      basic: stats.basic,
     },
   };
 
-  // Log — redacted: constraint flags only, never verbatim health text
+  // Log — minimized: no constraint values, no individual ages
   await eventWriter.log(sessionId, 'search', {
     destination, zone: staying, date,
     partySize: party.length,
-    partyAges: ages,
-    constraints: {
-      nonSwimmer: requireNonSwimmerOk || undefined,
-      pregnant: requirePregnantOk || undefined,
-      mobility: maxMobility,
-      motionComfort: motionComfort,
-    },
+    safety_filter_applied: safetyFiltersActive,
     candidateCount: candidates.length,
-    resultQuality: finalResultQuality,
-    enrichedCount: response.enrichedCount,
   });
 
   resetContextCache();
@@ -301,22 +298,21 @@ export async function handleGetExperience(params: Record<string, unknown>): Prom
 
   await eventWriter.log(sessionId, 'get_experience', { experienceId: expId });
 
-  const bookNowUrl = booking
-    ? `https://thailandfunexperiences.com${booking.redirectUrl}`
-    : null;
+  let bookNowUrl: string | null = null;
+  if (booking) {
+    const token = await createBookingToken(sessionId, expId);
+    bookNowUrl = `${SITE_ORIGIN}/r/${token}`;
+  }
 
   return {
-    experienceId: exp.id,
+    experience_id: exp.id,
     title: exp.title,
     category: exp.category,
-    durationMinutes: exp.durationMinutes,
+    duration_minutes: exp.durationMinutes,
     price_per_person_thb: exp.basePriceCents ? Math.round(exp.basePriceCents / 100) : null,
-    price_note: 'Price shown is per person in Thai Baht (THB). Final price confirmed at checkout.',
+    price_note: 'Per person in THB. Final price at checkout.',
     attributes: servedAttrs,
     book_now_url: bookNowUrl,
-    booking_note: bookNowUrl
-      ? 'Bookable now via this link — live availability, hotel pickup options shown at checkout.'
-      : null,
-    meetingPoints: exp.meetingPoints,
+    booking_note: bookNowUrl ? 'Live availability. Hotel pickup options at checkout.' : null,
   };
 }

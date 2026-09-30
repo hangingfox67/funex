@@ -3,19 +3,20 @@ import type { EventWriter } from '@funex/telemetry';
 import { ensureSession } from '@funex/telemetry';
 import { routeExperience } from './router.js';
 import type { db as Db } from '@funex/graph';
+import postgres from 'postgres';
 
 export interface RedirectPluginOptions {
   db: typeof Db;
   eventWriter: EventWriter;
 }
 
+const rawClient = postgres(process.env.DATABASE_URL ?? 'postgresql://funex:funex@localhost:5432/funex');
+
 /**
  * Fastify plugin: click redirect service.
  *
- * GET /r/:sessionId/:experienceId
- *
- * Resolves the experience's booking URL via routeExperience(),
- * logs a 'click' event, and 302-redirects to the Viator deep link.
+ * GET /r/:token — opaque token resolves to session+experience server-side.
+ * Also supports legacy GET /r/:sessionId/:experienceId for backward compat.
  */
 export async function redirectPlugin(
   app: FastifyInstance,
@@ -23,37 +24,71 @@ export async function redirectPlugin(
 ): Promise<void> {
   const { db, eventWriter } = opts;
 
+  // Opaque token route
   app.get(
-    '/r/:sessionId/:experienceId',
+    '/r/:token',
     async (
-      request: FastifyRequest<{
-        Params: { sessionId: string; experienceId: string };
-      }>,
+      request: FastifyRequest<{ Params: { token: string } }>,
       reply: FastifyReply,
     ) => {
-      const { sessionId, experienceId } = request.params;
+      const { token } = request.params;
 
+      // Skip if it looks like a legacy session ID (s_uuid format)
+      if (token.startsWith('s_')) {
+        reply.code(404).send({ error: 'Use /r/:token format' });
+        return;
+      }
+
+      // Resolve token
+      const rows = await rawClient`
+        SELECT session_id, experience_id FROM booking_token WHERE token = ${token} LIMIT 1
+      `;
+      if (rows.length === 0) {
+        reply.code(404).send({ error: 'Link expired or invalid' });
+        return;
+      }
+
+      const { session_id: sessionId, experience_id: experienceId } = rows[0] as { session_id: string; experience_id: string };
       const result = await routeExperience(experienceId, sessionId, db);
 
       if (!result) {
-        return reply.code(404).send({ error: 'Experience not routable' });
+        reply.code(404).send({ error: 'Activity not available' });
+        return;
       }
 
-      // Redirect first — never let logging failure block the user
-      const redirectUrl = result.url;
-      reply.redirect(redirectUrl, 302);
+      reply.redirect(result.url, 302);
 
-      // Best-effort logging (after redirect sent)
       try {
         await ensureSession(db, sessionId);
         await eventWriter.log(sessionId, 'click', {
           experienceId,
           provider: result.provider,
-          url: redirectUrl,
         });
-      } catch {
-        // Logging failure must never block redirects
+      } catch { /* logging failure must never block redirects */ }
+    },
+  );
+
+  // Legacy route (backward compat for old links)
+  app.get(
+    '/r/:sessionId/:experienceId',
+    async (
+      request: FastifyRequest<{ Params: { sessionId: string; experienceId: string } }>,
+      reply: FastifyReply,
+    ) => {
+      const { sessionId, experienceId } = request.params;
+      const result = await routeExperience(experienceId, sessionId, db);
+
+      if (!result) {
+        reply.code(404).send({ error: 'Experience not routable' });
+        return;
       }
+
+      reply.redirect(result.url, 302);
+
+      try {
+        await ensureSession(db, sessionId);
+        await eventWriter.log(sessionId, 'click', { experienceId, provider: result.provider });
+      } catch { /* never block */ }
     },
   );
 }
