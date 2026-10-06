@@ -26,7 +26,7 @@ const SEARCH_RESPONSE_FIELDS = [
   'experience_id', 'title', 'category', 'duration_minutes',
   'price_per_person_thb', 'price_note', 'fit', 'reasons',
   'book_now_url', 'booking_note', 'mobility_note',
-  'transfer', 'duration_note',
+  'transfer_note', 'duration_note',
   'booking_constraints', 'alternatives',
   'resultquality', 'conditions', 'weather', 'sea', 'season',
   'refine', 'totalmatch', 'cannarrowby', 'catalog',

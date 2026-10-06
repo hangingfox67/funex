@@ -202,14 +202,14 @@ export async function handleSearchExperiences(params: Record<string, unknown>): 
       bookNowUrl = `${SITE_ORIGIN}/r/${token}`;
     }
 
-    // Transfer context — honest about estimate quality
-    let transfer: { minutes: number; note: string } | undefined;
+    // Transfer context — zone-level median only (products lack venue coordinates).
+    // Exposed honestly as a coarse estimate, not a venue-specific drive time.
+    let transfer_note: string | undefined;
     if (c.transferMinutes !== null && c.transferMinutes !== undefined && c.transferMinutes > 0) {
       const ratio = c.durationMinutes ? c.transferMinutes / c.durationMinutes : 0;
-      let note = `Estimated ${c.transferMinutes} min one-way from ${staying}`;
-      if (ratio >= 1) note += '. Travel time exceeds activity duration.';
-      else if (ratio >= 0.5) note += '. Significant travel relative to activity length.';
-      transfer = { minutes: c.transferMinutes, note };
+      transfer_note = `Typical transfer from ${staying} area: around ${c.transferMinutes} min (zone estimate, not venue-specific)`;
+      if (ratio >= 1) transfer_note += '. Travel time may exceed activity duration — confirm pickup location.';
+      else if (ratio >= 0.5) transfer_note += '. Significant travel — confirm pickup.';
     }
 
     // Duration: null out ticket-validity values (≥1440 = 24h+ = likely ticket validity, not visit time)
@@ -226,7 +226,7 @@ export async function handleSearchExperiences(params: Record<string, unknown>): 
       price_note: 'Per person in THB. Final price at checkout.',
       fit: c.tier,
       reasons: c.reasons,
-      transfer: transfer,
+      transfer_note: transfer_note,
       book_now_url: bookNowUrl,
       booking_note: bookNowUrl ? 'Live availability. Hotel pickup options at checkout.' : null,
       mobility_note: c.mobilityNote,
