@@ -157,12 +157,15 @@ export async function handleSearchExperiences(params: Record<string, unknown>): 
     db,
   });
 
-  // Load venue zones for products that have location data
+  // Load venue zones: only verified physical venues influence routing
   const venueZoneRows = await rawClient`
     SELECT pv.experience_id, v.zone_slug
     FROM product_venue pv
     JOIN venue v ON v.id = pv.venue_id
-    WHERE v.zone_slug IS NOT NULL AND pv.is_primary = true
+    WHERE v.zone_slug IS NOT NULL
+      AND pv.is_primary = true
+      AND v.verification = 'verified'
+      AND v.location_type != 'pickup_area'
   `;
   const venueZones = new Map<string, string>();
   for (const row of venueZoneRows) {
@@ -215,23 +218,29 @@ export async function handleSearchExperiences(params: Record<string, unknown>): 
       bookNowUrl = `${SITE_ORIGIN}/r/${token}`;
     }
 
-    // Transfer context — venue-specific when location is known, zone estimate otherwise
-    let transfer_note: string | undefined;
-    if (c.transferMinutes !== null && c.transferMinutes !== undefined && c.transferMinutes > 0) {
-      const hasVenueZone = venueZones.has(c.experienceId);
+    // Transfer context
+    let transfer_note: string;
+    const venueZone = venueZones.get(c.experienceId);
+    if (c.transferMinutes !== null && c.transferMinutes !== undefined && c.transferMinutes > 0 && venueZone) {
+      // Verified venue: label what we're estimating
+      transfer_note = `Approx. ${c.transferMinutes} min drive, ${staying} to ${venueZone} zone centres. Does not include pickup or boat travel.`;
       const ratio = c.durationMinutes ? c.transferMinutes / c.durationMinutes : 0;
-      if (hasVenueZone) {
-        transfer_note = `About ${c.transferMinutes} min from ${staying}`;
-      } else {
-        transfer_note = `Typical transfer from ${staying} area: around ${c.transferMinutes} min (zone estimate)`;
-      }
-      if (ratio >= 1) transfer_note += '. Travel time may exceed activity duration — confirm pickup.';
-      else if (ratio >= 0.5) transfer_note += '. Significant travel relative to activity.';
+      if (ratio >= 1) transfer_note += ' Travel time may exceed activity duration.';
+      else if (ratio >= 0.5) transfer_note += ' Significant travel relative to activity.';
+    } else {
+      // Unknown: explicit explanation
+      transfer_note = 'Journey time from your area is not known for this activity. Confirm pickup or meeting-point details at booking.';
     }
 
     // Duration: null out ticket-validity values (≥1440 = 24h+ = likely ticket validity, not visit time)
     const duration = c.durationMinutes && c.durationMinutes < 1440 ? c.durationMinutes : null;
     const durationNote = c.durationMinutes && c.durationMinutes >= 1440 ? 'Duration varies — ticket valid for the day.' : undefined;
+
+    // Return-by feasibility: warn when travel time is unknown
+    let returnByNote: string | undefined;
+    if (returnBy && !venueZone) {
+      returnByNote = 'Return-time feasibility is unverified — travel time to/from this activity is unknown. Activity duration alone fits your deadline, but total journey time may not.';
+    }
 
     return {
       experience_id: c.experienceId,
@@ -243,7 +252,8 @@ export async function handleSearchExperiences(params: Record<string, unknown>): 
       price_note: 'Per person in THB. Final price at checkout.',
       fit: c.tier,
       reasons: c.reasons,
-      transfer_note: transfer_note,
+      transfer_note,
+      return_by_note: returnByNote,
       book_now_url: bookNowUrl,
       booking_note: bookNowUrl ? 'Live availability. Hotel pickup options at checkout.' : null,
       mobility_note: c.mobilityNote,

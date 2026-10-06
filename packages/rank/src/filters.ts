@@ -106,10 +106,18 @@ export function applyHardFilters(exp: ExperienceRow, ctx: FilterContext): string
   }
 
   // Return-by deadline: activity + round-trip transfer must fit
+  // When transfer is unknown, check duration alone (transfer may still cause overrun)
   if (ctx.availableMinutes && exp.durationMinutes) {
-    const roundTrip = (ctx.transferMinutes ?? 0) * 2;
-    if (exp.durationMinutes + roundTrip > ctx.availableMinutes) {
-      return 'exceeds_return_deadline';
+    if (ctx.transferMinutes !== undefined) {
+      const roundTrip = ctx.transferMinutes * 2;
+      if (exp.durationMinutes + roundTrip > ctx.availableMinutes) {
+        return 'exceeds_return_deadline';
+      }
+    } else {
+      // Unknown transfer: only hard-filter if activity alone exceeds deadline
+      if (exp.durationMinutes > ctx.availableMinutes) {
+        return 'exceeds_return_deadline';
+      }
     }
   }
 

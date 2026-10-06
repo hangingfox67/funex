@@ -27,7 +27,7 @@ const SEARCH_RESPONSE_FIELDS = [
   'price_per_person_thb', 'price_note', 'fit', 'reasons',
   'book_now_url', 'booking_note', 'mobility_note',
   'transfer_note', 'duration_note',
-  'booking_constraints', 'alternatives',
+  'booking_constraints', 'alternatives', 'return_by_note',
   'resultquality', 'conditions', 'weather', 'sea', 'season',
   'refine', 'totalmatch', 'cannarrowby', 'catalog',
 ];

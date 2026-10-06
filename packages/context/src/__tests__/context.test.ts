@@ -72,16 +72,14 @@ describe('context (A4)', () => {
     expect(evening!.duration_minutes).toBeGreaterThanOrEqual(morning!.duration_minutes);
   });
 
-  it('same-zone transfer is zero', async () => {
+  it('same-zone transfer returns null (intra-zone travel unknown)', async () => {
     const zones = [
       { slug: 'kata', lat: 7.8167, lng: 98.2983 },
       { slug: 'patong', lat: 7.8967, lng: 98.2967 },
     ];
     const matrix = await buildTravelMatrix(zones, {});
     const same = getTransfer(matrix, 'kata', 'kata', 'morning');
-    expect(same).not.toBeNull();
-    expect(same!.duration_minutes).toBe(0);
-    expect(same!.distance_km).toBe(0);
+    expect(same).toBeNull();
   });
 
   it('matrix covers zones × zones × 3 buckets', async () => {

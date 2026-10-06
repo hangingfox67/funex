@@ -161,17 +161,16 @@ export function rank(
       continue;
     }
 
-    // Transfer time: use venue-specific zone if known, otherwise median fallback
+    // Transfer time: use verified venue zone if known; otherwise unknown
+    // No median fallback — unknown routes get no transfer scoring
     let productTransfer: number | undefined;
     const venueZone = request.venueZones?.get(exp.id);
-    if (venueZone && transferMap.has(venueZone)) {
-      // Venue zone known — use zone-to-zone routed time
+    if (venueZone && transferMap.has(venueZone) && venueZone !== request.stayingZone) {
+      // Venue in a different zone — use zone-to-zone routed time
       productTransfer = transferMap.get(venueZone)!;
-    } else if (transferMap.size > 0) {
-      // Fallback: median across all zones (coarse estimate)
-      const sorted = [...transferMap.values()].sort((a, b) => a - b);
-      productTransfer = sorted[Math.floor(sorted.length / 2)];
     }
+    // Same-zone: still has intra-zone travel we can't estimate — leave undefined
+    // No venue zone: genuinely unknown — leave undefined
 
     const filterResult = applyHardFilters(exp, { ...filterCtx, transferMinutes: productTransfer });
     if (filterResult) {
@@ -228,12 +227,18 @@ export function rank(
   const totalQualified = scored.length;
 
   // Sort: enriched first, then score desc
-  // Sort: enriched first, then score desc, then nearest wins ties
+  // Tiebreaker: nearest wins, but unknown transfer is neutral (not penalized or advantaged)
   scored.sort((a, b) => {
     if (a.enrichmentTier !== b.enrichmentTier) return a.enrichmentTier === 'enriched' ? -1 : 1;
     if (b.score !== a.score) return b.score - a.score;
-    // "Same fun, less taxi" — nearest wins ties
-    return (a.transferMinutes ?? 999) - (b.transferMinutes ?? 999);
+    // Both have known transfer: nearest wins ties
+    if (a.transferMinutes !== null && b.transferMinutes !== null) {
+      return a.transferMinutes - b.transferMinutes;
+    }
+    // Known transfer beats unknown in ties (we can vouch for it)
+    if (a.transferMinutes !== null && b.transferMinutes === null) return -1;
+    if (a.transferMinutes === null && b.transferMinutes !== null) return 1;
+    return 0;
   });
 
   // ── Venue dedup: one slot per venue, variants as alternatives[] ──

@@ -221,13 +221,8 @@ export function getTransfer(
   toZone: string,
   bucket: 'morning' | 'midday' | 'evening',
 ): TransferTime | null {
-  if (fromZone === toZone) {
-    return {
-      from_zone: fromZone, to_zone: toZone, bucket,
-      duration_minutes: 0, distance_km: 0,
-      basis: matrix.basis, as_of: matrix.as_of,
-    };
-  }
+  // Same-zone: intra-zone travel time is unknown from zone centres — return null
+  if (fromZone === toZone) return null;
   return matrix.transfers.find(
     (t) => t.from_zone === fromZone && t.to_zone === toZone && t.bucket === bucket,
   ) ?? null;
