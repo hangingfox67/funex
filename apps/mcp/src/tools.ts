@@ -157,6 +157,18 @@ export async function handleSearchExperiences(params: Record<string, unknown>): 
     db,
   });
 
+  // Load venue zones for products that have location data
+  const venueZoneRows = await rawClient`
+    SELECT pv.experience_id, v.zone_slug
+    FROM product_venue pv
+    JOIN venue v ON v.id = pv.venue_id
+    WHERE v.zone_slug IS NOT NULL AND pv.is_primary = true
+  `;
+  const venueZones = new Map<string, string>();
+  for (const row of venueZoneRows) {
+    venueZones.set(row.experience_id as string, row.zone_slug as string);
+  }
+
   const rankRequest: RankRequest = {
     stayingZone: staying,
     date,
@@ -172,6 +184,7 @@ export async function handleSearchExperiences(params: Record<string, unknown>): 
     partySize: party.length,
     motionComfort: motionComfort,
     returnBy,
+    venueZones,
     maxResults,
     exclude: exclude ? {
       categories: exclude.categories,
@@ -202,14 +215,18 @@ export async function handleSearchExperiences(params: Record<string, unknown>): 
       bookNowUrl = `${SITE_ORIGIN}/r/${token}`;
     }
 
-    // Transfer context — zone-level median only (products lack venue coordinates).
-    // Exposed honestly as a coarse estimate, not a venue-specific drive time.
+    // Transfer context — venue-specific when location is known, zone estimate otherwise
     let transfer_note: string | undefined;
     if (c.transferMinutes !== null && c.transferMinutes !== undefined && c.transferMinutes > 0) {
+      const hasVenueZone = venueZones.has(c.experienceId);
       const ratio = c.durationMinutes ? c.transferMinutes / c.durationMinutes : 0;
-      transfer_note = `Typical transfer from ${staying} area: around ${c.transferMinutes} min (zone estimate, not venue-specific)`;
-      if (ratio >= 1) transfer_note += '. Travel time may exceed activity duration — confirm pickup location.';
-      else if (ratio >= 0.5) transfer_note += '. Significant travel — confirm pickup.';
+      if (hasVenueZone) {
+        transfer_note = `About ${c.transferMinutes} min from ${staying}`;
+      } else {
+        transfer_note = `Typical transfer from ${staying} area: around ${c.transferMinutes} min (zone estimate)`;
+      }
+      if (ratio >= 1) transfer_note += '. Travel time may exceed activity duration — confirm pickup.';
+      else if (ratio >= 0.5) transfer_note += '. Significant travel relative to activity.';
     }
 
     // Duration: null out ticket-validity values (≥1440 = 24h+ = likely ticket validity, not visit time)

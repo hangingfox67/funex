@@ -28,7 +28,8 @@ export interface RankRequest {
   transportIntent?: boolean;
   partySize?: number;
   motionComfort?: 'low' | 'normal';
-  returnBy?: string; // "13:00" — ranker enforces duration + transfers ≤ deadline from slot start
+  returnBy?: string;
+  venueZones?: Map<string, string>; // experience_id → venue zone slug (from location register) // "13:00" — ranker enforces duration + transfers ≤ deadline from slot start
   maxResults?: number; // default 4, cap 8
 
   // Exclusions for conversational follow-up
@@ -160,14 +161,19 @@ export function rank(
       continue;
     }
 
-    // Use MEDIAN transfer time (robust to outlier zones like Khao Lak/Ko Yao)
-    let medianTransfer: number | undefined;
-    if (transferMap.size > 0) {
+    // Transfer time: use venue-specific zone if known, otherwise median fallback
+    let productTransfer: number | undefined;
+    const venueZone = request.venueZones?.get(exp.id);
+    if (venueZone && transferMap.has(venueZone)) {
+      // Venue zone known — use zone-to-zone routed time
+      productTransfer = transferMap.get(venueZone)!;
+    } else if (transferMap.size > 0) {
+      // Fallback: median across all zones (coarse estimate)
       const sorted = [...transferMap.values()].sort((a, b) => a - b);
-      medianTransfer = sorted[Math.floor(sorted.length / 2)];
+      productTransfer = sorted[Math.floor(sorted.length / 2)];
     }
 
-    const filterResult = applyHardFilters(exp, { ...filterCtx, transferMinutes: medianTransfer });
+    const filterResult = applyHardFilters(exp, { ...filterCtx, transferMinutes: productTransfer });
     if (filterResult) {
       filtered.push({ id: exp.id, reason: filterResult });
       continue;
@@ -178,7 +184,7 @@ export function rank(
       rainSlots,
       requestSlot: request.timeBucket,
       season: ctx?.season.season,
-      transferMinutes: medianTransfer,
+      transferMinutes: productTransfer,
       budgetCents: request.budgetCents,
       motionComfort: request.motionComfort,
       partyEnergy: request.energy,
@@ -213,7 +219,7 @@ export function rank(
       attributes: exp.attributes,
       mobilityNote,
       bookingConstraints,
-      transferMinutes: medianTransfer ?? null,
+      transferMinutes: productTransfer ?? null,
       alternatives: [],
       venueKey: vk,
     });
