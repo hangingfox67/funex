@@ -63,12 +63,18 @@ export const GetExperienceParamsSchema = {
 
 // ── Annotations ──
 
+// search_experiences: writes internal session + analytics (not read-only),
+// calls Open-Meteo weather/marine + ORS travel matrix (public internet = open world),
+// never destroys data.
 export const SEARCH_ANNOTATIONS = {
   readOnlyHint: false,
-  openWorldHint: false,
+  openWorldHint: true,
   destructiveHint: false,
 };
 
+// get_experience: writes internal analytics (not read-only),
+// reads only from local database (no external calls = closed world),
+// never destroys data.
 export const GET_EXPERIENCE_ANNOTATIONS = {
   readOnlyHint: false,
   openWorldHint: false,
@@ -196,15 +202,31 @@ export async function handleSearchExperiences(params: Record<string, unknown>): 
       bookNowUrl = `${SITE_ORIGIN}/r/${token}`;
     }
 
+    // Transfer context — honest about estimate quality
+    let transfer: { minutes: number; note: string } | undefined;
+    if (c.transferMinutes !== null && c.transferMinutes !== undefined && c.transferMinutes > 0) {
+      const ratio = c.durationMinutes ? c.transferMinutes / c.durationMinutes : 0;
+      let note = `Estimated ${c.transferMinutes} min one-way from ${staying}`;
+      if (ratio >= 1) note += '. Travel time exceeds activity duration.';
+      else if (ratio >= 0.5) note += '. Significant travel relative to activity length.';
+      transfer = { minutes: c.transferMinutes, note };
+    }
+
+    // Duration: null out ticket-validity values (≥1440 = 24h+ = likely ticket validity, not visit time)
+    const duration = c.durationMinutes && c.durationMinutes < 1440 ? c.durationMinutes : null;
+    const durationNote = c.durationMinutes && c.durationMinutes >= 1440 ? 'Duration varies — ticket valid for the day.' : undefined;
+
     return {
       experience_id: c.experienceId,
       title: c.title,
       category: c.category,
-      duration_minutes: c.durationMinutes,
+      duration_minutes: duration,
+      duration_note: durationNote,
       price_per_person_thb: c.priceThb,
       price_note: 'Per person in THB. Final price at checkout.',
       fit: c.tier,
       reasons: c.reasons,
+      transfer: transfer,
       book_now_url: bookNowUrl,
       booking_note: bookNowUrl ? 'Live availability. Hotel pickup options at checkout.' : null,
       mobility_note: c.mobilityNote,

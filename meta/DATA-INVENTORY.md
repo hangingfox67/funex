@@ -51,6 +51,8 @@ Last updated: 2026-09-30. Every input field, stored field, log, cookie, outbound
 | candidates[].book_now_url | No — opaque token URL | Booking redirect |
 | candidates[].booking_note | No — fixed text | CTA prompt |
 | candidates[].mobility_note | No — activity description | Accessibility info |
+| candidates[].transfer | No — estimated minutes + note | Travel context from staying zone |
+| candidates[].duration_note | No — fixed text | Clarifies when duration is ticket validity |
 | candidates[].booking_constraints | No — operator rules | Booking requirements |
 | candidates[].alternatives | No — related activities | Venue variants |
 | attributes[] (get_experience) | No — activity safety/suitability data | Detailed attribute list for one activity |
