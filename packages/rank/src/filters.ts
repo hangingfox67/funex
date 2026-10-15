@@ -69,9 +69,16 @@ export function applyHardFilters(exp: ExperienceRow, ctx: FilterContext): string
     }
   }
 
-  // Budget
-  if (ctx.budgetCents && exp.basePriceCents && exp.basePriceCents > ctx.budgetCents) {
-    return 'over_budget';
+  // Budget — confirmed per-person: apply comparison. Unknown basis: exclude (affordability unverifiable).
+  if (ctx.budgetCents && exp.basePriceCents) {
+    const ageBands = exp.attributes.find((a) => a.key === 'viator.age_bands')?.value;
+    const hasTypedBand = Array.isArray(ageBands) && ageBands.some((b: { band?: string }) =>
+      b.band === 'ADULT' || b.band === 'CHILD' || b.band === 'SENIOR' || b.band === 'INFANT');
+    if (hasTypedBand) {
+      if (exp.basePriceCents > ctx.budgetCents) return 'over_budget';
+    } else {
+      return 'unknown_pricing_basis';
+    }
   }
 
   // Duration
@@ -139,16 +146,26 @@ export function applyHardFilters(exp: ExperienceRow, ctx: FilterContext): string
     }
   }
 
-  // Non-swimmer
+  // Non-swimmer — unconfirmed "ok" is not safe enough
   if (ctx.requireNonSwimmerOk) {
-    const nsOk = val('non_swimmer_ok');
-    if (nsOk === false) return 'requires_swimming';
+    const nsAttr = attrs.get('non_swimmer_ok');
+    if (nsAttr?.value === false) return 'requires_swimming';
+    // Unconfirmed true: check gate_status
+    if (nsAttr?.value === true) {
+      const ev = nsAttr.evidence as { gate_status?: string }[];
+      if (ev.some((e) => e.gate_status === 'unconfirmed')) return 'non_swimmer_unconfirmed';
+    }
   }
 
-  // Pregnant
+  // Pregnant — unconfirmed "ok" is not safe enough
   if (ctx.requirePregnantOk) {
-    const pregOk = val('pregnant_ok');
-    if (pregOk === false) return 'not_pregnant_safe';
+    const pregAttr = attrs.get('pregnant_ok');
+    if (pregAttr?.value === false) return 'not_pregnant_safe';
+    // Unconfirmed true: unknown suitability must not be treated as confirmed safe
+    if (pregAttr?.value === true) {
+      const ev = pregAttr.evidence as { gate_status?: string }[];
+      if (ev.some((e) => e.gate_status === 'unconfirmed')) return 'pregnant_unconfirmed';
+    }
   }
 
   // Motion comfort: low = hard-filter high seasickness risk

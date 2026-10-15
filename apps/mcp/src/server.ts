@@ -45,7 +45,7 @@ function createMcpServer(): McpServer {
   server.registerTool(
     'get_experience',
     {
-      description: 'Get full details for a specific experience by ID. Returns all safety/suitability attributes, price per person in THB, and a direct booking link (book_now_url) with live availability. Include the booking link when presenting to the user.',
+      description: 'Get full details for a specific experience by ID — prefer this for follow-up questions about products returned by search_experiences (pass its experience_id). Returns all safety/suitability attributes, pricing in THB (check price_note for per-person vs per-booking), and a direct booking link (book_now_url) with live availability. Always include the booking link when presenting details.',
       inputSchema: GetExperienceParamsSchema,
       annotations: GET_EXPERIENCE_ANNOTATIONS,
     },

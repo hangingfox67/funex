@@ -11,8 +11,11 @@ import type { ContextSnapshot } from '@funex/context';
 
 // ── Fixtures ──
 
-function makeAttr(key: string, value: unknown, riskClass = 'informational'): RankAttribute {
-  return { key, value, confidence: 0.95, evidence: [{ source: 'test', pointer: 'fixture' }], riskClass };
+function makeAttr(key: string, value: unknown, riskClass = 'informational', gateStatus?: string): RankAttribute {
+  return {
+    key, value, confidence: 0.95, riskClass,
+    evidence: [{ source: 'test', pointer: 'fixture', ...(gateStatus ? { gate_status: gateStatus } : {}) }],
+  };
 }
 
 function makeExp(id: string, title: string, overrides?: Partial<ExperienceRow>): ExperienceRow {
@@ -260,5 +263,210 @@ describe('Transfer routing correctness', () => {
     expect(withoutVenue.candidates[0].reasons).not.toContain('far_for_its_length');
     // Scores differ due to penalty
     expect(withVenue.candidates[0].score).toBeLessThan(withoutVenue.candidates[0].score);
+  });
+});
+
+// ── Safety filter: unconfirmed suitability ──
+
+describe('Safety filter: unconfirmed suitability', () => {
+  // N3: Unconfirmed pregnant_ok=true must not pass pregnant filter
+  it('unconfirmed pregnant_ok=true is filtered when pregnant constraint active', () => {
+    const exp = makeExp('exp_unconfirmed_preg', 'Private Catamaran Cruise', {
+      attributes: [
+        makeAttr('rain_viable', true),
+        makeAttr('indoor', false),
+        makeAttr('water_exposure', 'coastal'),
+        makeAttr('vessel_type', 'catamaran'),
+        makeAttr('mobility', 'moderate'),
+        makeAttr('non_swimmer_ok', true, 'safety'),
+        makeAttr('pregnant_ok', true, 'safety', 'unconfirmed'), // unconfirmed!
+        makeAttr('seasickness_risk', 'low'),
+        makeAttr('intensity', 'low'),
+      ],
+    });
+    const ctx = makeCtx('patong');
+
+    const result = rank([exp], ctx, {
+      stayingZone: 'patong',
+      date: '2026-08-20',
+      requirePregnantOk: true,
+    });
+
+    // Must be filtered — unconfirmed true is not safe
+    expect(result.candidates).toHaveLength(0);
+    expect(result.filtered.some((f) => f.reason === 'pregnant_unconfirmed')).toBe(true);
+  });
+
+  // Confirmed pregnant_ok=true should pass
+  it('confirmed pregnant_ok=true passes pregnant filter', () => {
+    const exp = makeExp('exp_confirmed_preg', 'Cooking Class', {
+      attributes: [
+        makeAttr('rain_viable', true),
+        makeAttr('indoor', true),
+        makeAttr('water_exposure', 'none'),
+        makeAttr('vessel_type', 'none'),
+        makeAttr('mobility', 'moderate'),
+        makeAttr('non_swimmer_ok', true, 'safety'),
+        makeAttr('pregnant_ok', true, 'safety', 'confirmed'),
+        makeAttr('seasickness_risk', 'none'),
+        makeAttr('intensity', 'low'),
+      ],
+    });
+    const ctx = makeCtx('patong');
+
+    const result = rank([exp], ctx, {
+      stayingZone: 'patong',
+      date: '2026-08-20',
+      requirePregnantOk: true,
+    });
+
+    expect(result.candidates).toHaveLength(1);
+  });
+});
+
+// ── Pricing basis: budget filter ──
+
+describe('Pricing basis: budget filter', () => {
+  // 1. Expensive per-person product (ADULT+CHILD bands) — filtered by budget
+  it('confirmed per-person product over budget is filtered', () => {
+    const exp = makeExp('exp_expensive_pp', 'Premium Snorkeling Tour', {
+      basePriceCents: 500000, // 5,000 THB per person
+      attributes: [
+        makeAttr('rain_viable', false),
+        makeAttr('indoor', false),
+        makeAttr('water_exposure', 'open_sea'),
+        makeAttr('vessel_type', 'speedboat'),
+        makeAttr('mobility', 'moderate'),
+        makeAttr('non_swimmer_ok', true),
+        makeAttr('pregnant_ok', true),
+        makeAttr('seasickness_risk', 'moderate'),
+        makeAttr('intensity', 'moderate'),
+        makeAttr('viator.age_bands', [{ band: 'ADULT', startAge: 18, endAge: 99 }, { band: 'CHILD', startAge: 3, endAge: 17 }]),
+      ],
+    });
+    const ctx = makeCtx('kata');
+
+    const result = rank([exp], ctx, {
+      stayingZone: 'kata',
+      date: '2026-08-20',
+      budgetCents: 200000, // 2,000 THB budget
+    });
+
+    expect(result.candidates).toHaveLength(0);
+    expect(result.filtered.some((f) => f.reason === 'over_budget')).toBe(true);
+  });
+
+  // 2. Unknown-basis product excluded when budget is supplied (even if displayed price is under budget)
+  it('unknown-basis product excluded when budget is supplied, even if price appears under budget', () => {
+    const exp = makeExp('exp_cheap_traveler', 'Horror Escape Room', {
+      basePriceCents: 100000, // 1,000 THB — looks under budget, but basis unknown
+      attributes: [
+        makeAttr('rain_viable', true),
+        makeAttr('indoor', true),
+        makeAttr('water_exposure', 'none'),
+        makeAttr('vessel_type', 'none'),
+        makeAttr('mobility', 'moderate'),
+        makeAttr('non_swimmer_ok', true),
+        makeAttr('pregnant_ok', false),
+        makeAttr('seasickness_risk', 'none'),
+        makeAttr('intensity', 'moderate'),
+        makeAttr('viator.age_bands', [{ band: 'TRAVELER', startAge: 0, endAge: 120 }]),
+      ],
+    });
+    const ctx = makeCtx('kata');
+
+    const result = rank([exp], ctx, {
+      stayingZone: 'kata',
+      date: '2026-08-20',
+      budgetCents: 200000, // 2,000 THB budget — price is under, but basis is unknown
+    });
+
+    expect(result.candidates).toHaveLength(0);
+    expect(result.filtered.some((f) => f.reason === 'unknown_pricing_basis')).toBe(true);
+  });
+
+  // 3. Expensive unknown-basis product also excluded
+  it('expensive unknown-basis product excluded when budget supplied', () => {
+    const exp = makeExp('exp_traveler_band', 'Private Yacht Charter', {
+      basePriceCents: 5000000, // 50,000 THB
+      attributes: [
+        makeAttr('rain_viable', true),
+        makeAttr('indoor', false),
+        makeAttr('water_exposure', 'coastal'),
+        makeAttr('vessel_type', 'catamaran'),
+        makeAttr('mobility', 'moderate'),
+        makeAttr('non_swimmer_ok', true),
+        makeAttr('pregnant_ok', false),
+        makeAttr('seasickness_risk', 'low'),
+        makeAttr('intensity', 'low'),
+        makeAttr('viator.age_bands', [{ band: 'TRAVELER', startAge: 0, endAge: 120 }]),
+      ],
+    });
+    const ctx = makeCtx('kata');
+
+    const result = rank([exp], ctx, {
+      stayingZone: 'kata',
+      date: '2026-08-20',
+      budgetCents: 200000,
+    });
+
+    expect(result.candidates).toHaveLength(0);
+    expect(result.filtered.some((f) => f.reason === 'unknown_pricing_basis')).toBe(true);
+  });
+
+  // 4. Unknown-basis product included when no budget supplied
+  it('unknown-basis product included when no budget is supplied', () => {
+    const exp = makeExp('exp_traveler_no_budget', 'Private Yacht Charter', {
+      basePriceCents: 5000000,
+      attributes: [
+        makeAttr('rain_viable', true),
+        makeAttr('indoor', false),
+        makeAttr('water_exposure', 'coastal'),
+        makeAttr('vessel_type', 'catamaran'),
+        makeAttr('mobility', 'moderate'),
+        makeAttr('non_swimmer_ok', true),
+        makeAttr('pregnant_ok', false),
+        makeAttr('seasickness_risk', 'low'),
+        makeAttr('intensity', 'low'),
+        makeAttr('viator.age_bands', [{ band: 'TRAVELER', startAge: 0, endAge: 120 }]),
+      ],
+    });
+    const ctx = makeCtx('kata');
+
+    const result = rank([exp], ctx, {
+      stayingZone: 'kata',
+      date: '2026-08-20',
+      // no budgetCents
+    });
+
+    expect(result.candidates).toHaveLength(1);
+  });
+
+  // 5. Per-person product under budget passes
+  it('confirmed per-person product under budget passes', () => {
+    const exp = makeExp('exp_cheap_pp', 'Muay Thai Class', {
+      basePriceCents: 50000, // 500 THB per person
+      attributes: [
+        makeAttr('rain_viable', true),
+        makeAttr('indoor', true),
+        makeAttr('water_exposure', 'none'),
+        makeAttr('vessel_type', 'none'),
+        makeAttr('mobility', 'moderate'),
+        makeAttr('non_swimmer_ok', true),
+        makeAttr('pregnant_ok', false),
+        makeAttr('seasickness_risk', 'none'),
+        makeAttr('intensity', 'high'),
+        makeAttr('viator.age_bands', [{ band: 'ADULT', startAge: 13, endAge: 99 }]),
+      ],
+    });
+    const ctx = makeCtx('kata');
+
+    const result = rank([exp], ctx, {
+      stayingZone: 'kata',
+      date: '2026-08-20',
+      budgetCents: 200000, // 2,000 THB budget
+    });
+
+    expect(result.candidates).toHaveLength(1);
   });
 });

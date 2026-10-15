@@ -15,3 +15,7 @@ packages/telemetry/dashboard.md
 
 # Local env
 .env
+
+# Scratch files and media
+query_db.ts
+*.mp4

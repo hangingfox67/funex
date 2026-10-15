@@ -24,10 +24,10 @@ const SEARCH_INPUT_FIELDS = [
 // All fields that appear in search_experiences response
 const SEARCH_RESPONSE_FIELDS = [
   'experience_id', 'title', 'category', 'duration_minutes',
-  'price_per_person_thb', 'price_note', 'fit', 'reasons',
+  'price_thb', 'pricing_basis', 'price_note', 'fit', 'reasons',
   'book_now_url', 'booking_note', 'mobility_note',
   'transfer_note', 'duration_note',
-  'booking_constraints', 'alternatives', 'return_by_note',
+  'booking_constraints', 'alternatives', 'return_by_note', 'advance_booking',
   'resultquality', 'conditions', 'weather', 'sea', 'season',
   'refine', 'totalmatch', 'cannarrowby', 'catalog',
 ];
@@ -35,7 +35,7 @@ const SEARCH_RESPONSE_FIELDS = [
 // All fields that appear in get_experience response
 const GET_EXPERIENCE_RESPONSE_FIELDS = [
   'experience_id', 'title', 'category', 'duration_minutes',
-  'price_per_person_thb', 'price_note', 'attributes',
+  'price_thb', 'pricing_basis', 'price_note', 'attributes',
   'book_now_url', 'booking_note',
 ];
 

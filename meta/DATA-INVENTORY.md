@@ -44,15 +44,17 @@ Last updated: 2026-09-30. Every input field, stored field, log, cookie, outbound
 | candidates[].title | No — activity name | Display |
 | candidates[].category | No — activity type | Display |
 | candidates[].duration_minutes | No | Display |
-| candidates[].price_per_person_thb | No — catalog price | Display |
-| candidates[].price_note | No — fixed text | Clarification |
+| candidates[].price_thb | No — catalog price | Display |
+| candidates[].pricing_basis | No — "per_person" or "unknown" | Pricing basis from supplier evidence |
+| candidates[].price_note | No — fixed text | Explains pricing basis and caveats |
 | candidates[].fit | No — excellent/good/fair | Ranking tier |
 | candidates[].reasons | No — reason codes | Why this activity fits |
 | candidates[].book_now_url | No — opaque token URL | Booking redirect |
 | candidates[].booking_note | No — fixed text | CTA prompt |
 | candidates[].mobility_note | No — activity description | Accessibility info |
 | candidates[].transfer_note | No — zone-centre driving estimate or unknown | Transfer context between verified venue zone and staying zone |
-| candidates[].return_by_note | No — fixed text | Warns when return feasibility is unverified due to unknown travel time |
+| candidates[].return_by_note | No — fixed text | Warns when return feasibility is unverified due to unknown travel time or flexible visit duration |
+| candidates[].advance_booking | No — fixed text or absent | States advance booking requirement when known |
 | candidates[].duration_note | No — fixed text | Clarifies when duration is ticket validity |
 | candidates[].booking_constraints | No — operator rules | Booking requirements |
 | candidates[].alternatives | No — related activities | Venue variants |

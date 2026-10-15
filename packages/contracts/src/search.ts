@@ -132,12 +132,16 @@ export const SEARCH_TOOL_DESCRIPTION = `Search Phuket activities for a travel pa
 
 **Portfolio, not top-k.** Each response contains one best-overall pick, alternative categories, and a wildcard/value option — all from distinct venues. Same-venue variants (different packages) appear as alternatives[] on each row.
 
-**Conversational loop.** Return few, refine on reaction. Use \`seen\` or \`exclude\` to get fresh results on follow-up turns — zero overlap guaranteed. Example: user says "no adventure" → re-query with exclude.categories=["adventure"].
+**Follow-ups.** Each candidate has a stable experience_id. Use get_experience with that ID for follow-up questions about any returned product — prefer this over web search for catalog items. Use \`seen\` or \`exclude\` to get fresh results on follow-up turns — zero overlap guaranteed.
 
 **Enriched results** (~350 products) have safety/suitability attributes (age floors, mobility, seasickness, wheelchair, pregnancy) and are ranked by context fit. **Basic results** (~1,550) have title/category/price only — excluded when safety filters are active.
 
 **Weather-aware.** Rain forecasts are slot-aware (morning/midday/evening). Outdoor activities get dry_window_match or rain_risk based on the requested time slot. Sea state penalizes open-sea activities when swell is moderate/rough.
 
-**Structured constraints, not free text.** Translate traveler health and comfort needs into the structured constraints object: \`motion_comfort: "low"\` (avoid rough seas/bumpy rides), \`mobility: "limited"\` (wheelchair/walking difficulty), \`pregnant: true\`, \`non_swimmer: true\`. Do NOT pass medical language or health details as free text in any field.
+**Structured constraints — always pass them.** Translate traveler health and comfort needs into the structured constraints object: \`motion_comfort: "low"\` (avoid rough seas/bumpy rides), \`mobility: "limited"\` (wheelchair/walking difficulty), \`pregnant: true\`, \`non_swimmer: true\`. Do NOT pass medical language or health details as free text in any field. Even when the user says "ignore restrictions," still pass known constraints — the server filters on safety, not preference.
 
-Each result includes a direct booking link (book_now_url) with live availability. When presenting options, include the booking link for each recommendation — users can check availability and book immediately. Prices are per person in THB, confirmed at checkout.`;
+**Booking links.** Every candidate includes book_now_url with live availability. Always include this link when presenting options — it is the booking path. Do not omit it or substitute external links. Prices: check price_note — most are per person in THB, but charter/private products show per-booking pricing.
+
+**Walk-in / no-advance-booking requests.** This tool cannot filter by walk-in availability. The advance_booking field in results indicates when booking is required or recommended, but absence does not confirm walk-in availability. For walk-in-specific requests, inform the user that walk-in filtering is not supported.
+
+**Caveats in the response.** transfer_note, return_by_note, duration_note, and advance_booking contain important caveats. Present them to the user — do not simplify transfer estimates into unqualified drive times or treat suggested visit durations as confirmed activity lengths.`;

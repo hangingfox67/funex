@@ -17,6 +17,27 @@ const eventWriter = createEventWriter(db);
 const rawClient = postgres(process.env.DATABASE_URL ?? 'postgresql://funex:funex@localhost:5432/funex');
 const SITE_ORIGIN = process.env.SITE_ORIGIN ?? 'https://thailandfunexperiences.com';
 
+/**
+ * Determine pricing basis from supplier age-band evidence.
+ * - 'per_person': supplier uses ADULT/CHILD/SENIOR bands (confirmed per-traveler pricing)
+ * - 'unknown': supplier uses single TRAVELER band or no band data (ambiguous)
+ */
+type PricingBasis = 'per_person' | 'unknown';
+
+function pricingBasis(attributes: { key: string; value: unknown }[]): PricingBasis {
+  const ageBands = attributes.find((a) => a.key === 'viator.age_bands')?.value;
+  if (!Array.isArray(ageBands) || ageBands.length === 0) return 'unknown';
+  // If any band uses ADULT, CHILD, SENIOR, INFANT — supplier confirms per-person pricing
+  const hasTypedBand = ageBands.some((b: { band?: string }) =>
+    b.band === 'ADULT' || b.band === 'CHILD' || b.band === 'SENIOR' || b.band === 'INFANT');
+  return hasTypedBand ? 'per_person' : 'unknown';
+}
+
+const PRICE_NOTES: Record<PricingBasis, string> = {
+  per_person: 'Per person in THB. Final price at checkout.',
+  unknown: 'Pricing basis (per person or per group) is not confirmed by the supplier. Final price at checkout.',
+};
+
 /** Create an opaque booking token (no session/exp IDs in the URL). */
 async function createBookingToken(sessionId: string, experienceId: string): Promise<string> {
   const token = crypto.randomBytes(12).toString('base64url');
@@ -211,6 +232,9 @@ export async function handleSearchExperiences(params: Record<string, unknown>): 
         evidence: a.evidence as { source: string; pointer: string; inference_basis?: string; gate_status?: string }[],
       }));
 
+    // Pricing basis from supplier evidence
+    const basis = pricingBasis(c.attributes);
+
     // Opaque booking token — no session/exp IDs in the URL
     let bookNowUrl: string | null = null;
     if (booking) {
@@ -232,14 +256,36 @@ export async function handleSearchExperiences(params: Record<string, unknown>): 
       transfer_note = 'Journey time from your area is not known for this activity. Confirm pickup or meeting-point details at booking.';
     }
 
-    // Duration: null out ticket-validity values (≥1440 = 24h+ = likely ticket validity, not visit time)
-    const duration = c.durationMinutes && c.durationMinutes < 1440 ? c.durationMinutes : null;
-    const durationNote = c.durationMinutes && c.durationMinutes >= 1440 ? 'Duration varies — ticket valid for the day.' : undefined;
+    // Duration handling
+    let duration = c.durationMinutes && c.durationMinutes < 1440 ? c.durationMinutes : null;
+    let durationNote: string | undefined;
+    if (c.durationMinutes && c.durationMinutes >= 1440) {
+      durationNote = 'Duration varies — ticket valid for the day.';
+    }
+    // Admission/ticket products: Viator durations are suggested visit times, not fixed activity lengths
+    const isAdmissionProduct = /\b(ticket|entry|admission|pass|water\s*park|waterpark|aquarium|museum)\b/i.test(c.title);
+    if (isAdmissionProduct && duration !== null) {
+      durationNote = 'Duration shown is a suggested visit time, not a fixed activity length. Actual visit duration is flexible.';
+    }
 
-    // Return-by feasibility: warn when travel time is unknown
+    // Surface advance_booking_needed when it signals required
+    const attrs = new Map(c.attributes.map((a) => [a.key, a]));
+    const advBooking = attrs.get('advance_booking_needed')?.value as string | undefined;
+    const advBookingNote = advBooking === 'required' ? 'Advance booking required — not available as a walk-in.'
+      : advBooking === 'recommended' ? 'Advance booking recommended.'
+      : undefined;
+
+    // Return-by feasibility: warn when any component is unconfirmed
+    // Start times are never known — we only have best_time_of_day suggestions
     let returnByNote: string | undefined;
-    if (returnBy && !venueZone) {
-      returnByNote = 'Return-time feasibility is unverified — travel time to/from this activity is unknown. Activity duration alone fits your deadline, but total journey time may not.';
+    if (returnBy) {
+      if (!venueZone) {
+        returnByNote = 'Return-time feasibility is unverified — travel time to/from this activity is unknown. Activity duration alone fits your deadline, but total journey time may not. Start time is not confirmed.';
+      } else if (isAdmissionProduct) {
+        returnByNote = 'Return-time feasibility is approximate — visit duration at this venue is flexible, not a fixed activity length.';
+      } else {
+        returnByNote = 'Return-time estimate is based on activity duration and zone-centre driving time. Start time, pickup duration, and any boat travel are not included. Confirm departure time at booking.';
+      }
     }
 
     return {
@@ -248,12 +294,14 @@ export async function handleSearchExperiences(params: Record<string, unknown>): 
       category: c.category,
       duration_minutes: duration,
       duration_note: durationNote,
-      price_per_person_thb: c.priceThb,
-      price_note: 'Per person in THB. Final price at checkout.',
+      price_thb: c.priceThb,
+      pricing_basis: basis,
+      price_note: PRICE_NOTES[basis],
       fit: c.tier,
       reasons: c.reasons,
       transfer_note,
       return_by_note: returnByNote,
+      advance_booking: advBookingNote,
       book_now_url: bookNowUrl,
       booking_note: bookNowUrl ? 'Live availability. Hotel pickup options at checkout.' : null,
       mobility_note: c.mobilityNote,
@@ -349,13 +397,17 @@ export async function handleGetExperience(params: Record<string, unknown>): Prom
     bookNowUrl = `${SITE_ORIGIN}/r/${token}`;
   }
 
+  const basis = pricingBasis(attrs);
+  const priceThb = exp.basePriceCents ? Math.round(exp.basePriceCents / 100) : null;
+
   return {
     experience_id: exp.id,
     title: exp.title,
     category: exp.category,
     duration_minutes: exp.durationMinutes,
-    price_per_person_thb: exp.basePriceCents ? Math.round(exp.basePriceCents / 100) : null,
-    price_note: 'Per person in THB. Final price at checkout.',
+    price_thb: priceThb,
+    pricing_basis: basis,
+    price_note: PRICE_NOTES[basis],
     attributes: servedAttrs,
     book_now_url: bookNowUrl,
     booking_note: bookNowUrl ? 'Live availability. Hotel pickup options at checkout.' : null,
