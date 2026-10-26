@@ -26,8 +26,7 @@ Two channels, two different jobs:
 
 Headline candidates (Dan picks; do not invent a fourth without asking):
 - Every family is different. Most travel advice isn't.
-- Tailored to your crew, today's weather, and where you're staying.
-- The right thing to do tomorrow — for your exact family.
+- Planned around your crew, today's weather, and where you're staying.
 
 Copy rules: plain verbs, sentence case, no exclamation marks, no "unlock/seamless/effortless", no em-dash-heavy marketing rhythm. State facts the product actually produces.
 
