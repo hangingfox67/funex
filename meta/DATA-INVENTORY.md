@@ -146,8 +146,9 @@ Last updated: 2026-09-30. Every input field, stored field, log, cookie, outbound
 | Anthropic Batch API | Product descriptions | No — catalog content only | Enrichment extraction |
 | Google OAuth (accounts.google.com) | Redirect URI | User's Google sign-in | Web account auth |
 | Google UserInfo (googleapis.com) | OAuth access token | Returns: email, name, Google ID | Web account creation |
+| MCP Registry (registry.modelcontextprotocol.io) | server.json (name, URL, version, repo) | No — public catalog metadata only | Server listing in MCP registry |
 
-**No user data sent to:** Open-Meteo, ORS/HeiGIT, Viator, Anthropic. These receive only zone coordinates, product codes, or catalog content.
+**No user data sent to:** Open-Meteo, ORS/HeiGIT, Viator, Anthropic, MCP Registry. These receive only zone coordinates, product codes, catalog content, or public server metadata.
 
 ## 6. Server/Application Logs
 
